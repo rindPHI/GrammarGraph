@@ -23,6 +23,11 @@ class Node:
     def quote_symbol(self):
         return '"' + self.symbol.translate(str.maketrans({'"': r"\""})) + '"'
 
+    def reachable(self, to_node: 'Node') -> bool:
+        graph = GrammarGraph(self)
+        sources = graph.filter(lambda node: issubclass(type(node), NonterminalNode) and to_node in node.children)
+        return len(sources) > 0
+
 
 class NonterminalNode(Node):
     def __init__(self, symbol: str, children: List[Node]):
@@ -81,12 +86,6 @@ class GrammarGraph:
                         visited.append(child)
                         queue.append(child)
 
-    @staticmethod
-    def reachable(from_node: Node, to_node: Node) -> bool:
-        graph = GrammarGraph(from_node)
-        sources = graph.filter(lambda node: issubclass(type(node), NonterminalNode) and to_node in node.children)
-        return len(sources) > 0
-
     def to_grammar(self):
         result: Grammar = {}
 
@@ -118,6 +117,21 @@ class GrammarGraph:
         root_node = NonterminalNode("<start>", [ChoiceNode("<start>-choice-1", [start_node])])
         return GrammarGraph(root_node)
 
+    def parents(self, node: Node) -> List[Node]:
+        result = []
+
+        def action(maybe_parent: Node) -> bool:
+            if issubclass(type(maybe_parent), NonterminalNode) and \
+                    node in typing.cast(NonterminalNode, maybe_parent).children and \
+                    maybe_parent not in result:
+                result.append(maybe_parent)
+
+            return False
+
+        self.bfs(action)
+
+        return result
+
     def is_tree(self):
         # We cannot simply perform a BFS and return False if any child has already been
         # seen since we re-use nodes for the same nonterminal (they could be copied, but
@@ -127,7 +141,7 @@ class GrammarGraph:
         def action(node: Node):
             nonlocal result
             if issubclass(type(node), NonterminalNode):
-                if self.reachable(node, node):
+                if node.reachable(node):
                     result = False
                     return True
 

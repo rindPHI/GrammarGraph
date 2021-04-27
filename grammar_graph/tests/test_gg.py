@@ -1,11 +1,12 @@
+import typing
 import unittest
 
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR
 
-from grammar_graph.gg import GrammarGraph
+from grammar_graph.gg import GrammarGraph, Node, NonterminalNode
 
 
-class TestRegularityChecker(unittest.TestCase):
+class TestGrammarGraph(unittest.TestCase):
 
     # def test_todot(self):
     #     graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
@@ -15,16 +16,34 @@ class TestRegularityChecker(unittest.TestCase):
         graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
 
         element_node = graph.get_node("<element>")
-        self.assertTrue(graph.reachable(element_node, element_node))
+        self.assertTrue(element_node.reachable(element_node))
 
         value_node = graph.get_node("<value>")
-        self.assertTrue(graph.reachable(value_node, value_node))
-        self.assertTrue(graph.reachable(element_node, value_node))
+        self.assertTrue(value_node.reachable(value_node))
+        self.assertTrue(element_node.reachable(value_node))
 
         int_node = graph.get_node("<int>")
-        self.assertTrue(graph.reachable(value_node, int_node))
-        self.assertTrue(graph.reachable(element_node, int_node))
-        self.assertFalse(graph.reachable(int_node, int_node))
+        self.assertTrue(value_node.reachable(int_node))
+        self.assertTrue(element_node.reachable(int_node))
+        self.assertFalse(int_node.reachable(int_node))
+
+    def test_parents(self):
+        graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
+
+        def action(node: Node) -> bool:
+            parents = graph.parents(node)
+            parent: NonterminalNode
+            for parent in parents:
+                self.assertIn(node, parent.children)
+
+            if issubclass(type(Node), NonterminalNode):
+                node: NonterminalNode
+                for child in node.children:
+                    self.assertIn(node, graph.parents(child))
+
+            return False
+
+        graph.bfs(action)
 
     def test_to_grammar(self):
         graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
