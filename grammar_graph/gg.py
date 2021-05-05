@@ -1,8 +1,11 @@
 import re
 import typing
-from typing import List, Dict, Callable, Union
+from collections import defaultdict
+from typing import List, Dict, Callable, Union, Set, Optional
 
+from orderedset import OrderedSet
 import pydot
+import sys
 from fuzzingbook.Grammars import is_nonterminal, RE_NONTERMINAL
 
 NonterminalType = str
@@ -85,6 +88,60 @@ class GrammarGraph:
                     if child not in visited:
                         visited.append(child)
                         queue.append(child)
+
+    def all_nodes(self) -> OrderedSet[Node]:
+        nodes: OrderedSet[Node] = OrderedSet([])
+
+        def action(node: Node):
+            nonlocal nodes
+            nodes.add(node)
+
+        self.bfs(action)
+        return nodes
+
+    def shortest_path(self, source: Node, target: Node, filter=lambda n: type(n) is NonterminalNode):
+        dist, prev = self.dijkstra(source, target)
+        s = []
+        u = target
+        if prev[u] is not None or u == source:
+            while u is not None:
+                s = [u] + s
+                u = prev[u]
+
+        return list([n for n in s if filter(n)])
+
+    def dijkstra(self, source: Node, target: Optional[Node]):
+        """Implementation of Dijkstra's algorithm"""
+        q: Set[Node] = set()
+
+        nodes = self.all_nodes()
+
+        dist: Dict[Node, int] = {}
+        prev: Dict[Node, Optional[Node]] = {}
+
+        for v in nodes:
+            dist[v] = sys.maxsize
+            prev[v] = None
+            q.add(v)
+
+        dist[source] = 0
+
+        while q:
+            u: Node = next(v for v in q if not any(w for w in q if dist[w] < dist[v]))
+            q.remove(u)
+
+            if u == target:
+                break
+
+            if issubclass(type(u), NonterminalNode):
+                u: NonterminalNode
+                for v in u.children:
+                    alt = dist[u] + 1
+                    if alt < dist[v]:
+                        dist[v] = alt
+                        prev[v] = u
+
+        return dist, prev
 
     def to_grammar(self):
         result: Grammar = {}

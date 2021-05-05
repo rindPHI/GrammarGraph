@@ -63,6 +63,12 @@ class TestGrammarGraph(unittest.TestCase):
         self.assertTrue(graph.subgraph("<exchange>").is_tree())
         self.assertTrue(graph.subgraph("<start>").is_tree())
 
+    def test_dijkstra(self):
+        graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
+        path = list(map(lambda node: node.symbol,
+                        [node for node in graph.shortest_path(graph.get_node("<value>"), graph.get_node("<member>"))]))
+        self.assertEqual(['<value>', '<object>', '<members>', '<member>'], path)
+
 
 if __name__ == '__main__':
     unittest.main()
