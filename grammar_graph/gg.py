@@ -1,12 +1,10 @@
 import re
-import typing
-from collections import defaultdict
-from typing import List, Dict, Callable, Union, Set, Optional
+from typing import List, Dict, Callable, Union, Set, Optional, Tuple, cast
 
-from orderedset import OrderedSet
 import pydot
 import sys
 from fuzzingbook.Grammars import is_nonterminal, RE_NONTERMINAL
+from orderedset import OrderedSet
 
 NonterminalType = str
 Grammar = Dict[NonterminalType, List[str]]
@@ -111,7 +109,7 @@ class GrammarGraph:
 
         return s if nodes_filter is None else list([n for n in s if nodes_filter(n)])
 
-    def dijkstra(self, source: Node, target: Optional[Node]):
+    def dijkstra(self, source: Node, target: Optional[Node]) -> Tuple[Dict[Node, int], Dict[Node, Optional[Node]]]:
         """Implementation of Dijkstra's algorithm"""
         q: Set[Node] = set()
 
@@ -180,7 +178,7 @@ class GrammarGraph:
 
         def action(maybe_parent: Node) -> bool:
             if issubclass(type(maybe_parent), NonterminalNode) and \
-                    node in typing.cast(NonterminalNode, maybe_parent).children and \
+                    node in cast(NonterminalNode, maybe_parent).children and \
                     maybe_parent not in result:
                 result.append(maybe_parent)
 
@@ -208,8 +206,8 @@ class GrammarGraph:
 
     def get_node(self, nonterminal: str) -> Union[None, NonterminalNode]:
         assert is_nonterminal(nonterminal)
-        candidates = typing.cast(List[NonterminalNode],
-                                 self.filter(lambda node: type(node) is NonterminalNode and node.symbol == nonterminal))
+        candidates = cast(List[NonterminalNode],
+                          self.filter(lambda node: type(node) is NonterminalNode and node.symbol == nonterminal))
         if not candidates:
             return None
         assert len(candidates) == 1
