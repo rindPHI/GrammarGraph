@@ -99,7 +99,8 @@ class GrammarGraph:
         self.bfs(action)
         return nodes
 
-    def shortest_path(self, source: Node, target: Node, filter=lambda n: type(n) is NonterminalNode):
+    def shortest_path(self, source: Node, target: Node,
+                      nodes_filter: Optional[Callable[[Node], bool]] = lambda n: type(n) is NonterminalNode):
         dist, prev = self.dijkstra(source, target)
         s = []
         u = target
@@ -108,7 +109,7 @@ class GrammarGraph:
                 s = [u] + s
                 u = prev[u]
 
-        return list([n for n in s if filter(n)])
+        return s if nodes_filter is None else list([n for n in s if nodes_filter(n)])
 
     def dijkstra(self, source: Node, target: Optional[Node]):
         """Implementation of Dijkstra's algorithm"""
