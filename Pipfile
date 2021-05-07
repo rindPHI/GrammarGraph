@@ -10,6 +10,7 @@ orderedset = "*"
 fibheap = "*"
 jupyter = "*"
 graphviz = "*"
+ipykernel = "*"
 
 [dev-packages]
 pipenv-setup = "*"
