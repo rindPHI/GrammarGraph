@@ -82,7 +82,7 @@ setup(
     # Classifiers help users find your project by categorizing it.
     #
     # For a list of valid classifiers, see https://pypi.org/classifiers/
-    #classifiers=[  # Optional
+    # classifiers=[  # Optional
     #    # How mature is this project? Common values are
     #    #   3 - Alpha
     #    #   4 - Beta
@@ -132,9 +132,67 @@ setup(
     # For an analysis of "install_requires" vs pip's requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
+        "appnope==0.1.2; sys_platform == 'darwin' and platform_system == 'Darwin'",
+        "argon2-cffi==20.1.0",
+        "async-generator==1.10; python_version >= '3.5'",
+        "attrs==21.2.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
+        "backcall==0.2.0",
+        "bleach==3.3.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
+        "cffi==1.14.5",
+        "decorator==5.0.7; python_version >= '3.5'",
+        "defusedxml==0.7.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
+        "entrypoints==0.3; python_version >= '2.7'",
+        "fibheap==0.2.1",
         "fuzzingbook==0.8.1",
+        "graphviz==0.16",
+        "ipykernel==5.5.4",
+        "ipython==7.23.1; python_version >= '3.3'",
+        "ipython-genutils==0.2.0",
+        "ipywidgets==7.6.3",
+        "jedi==0.18.0; python_version >= '3.6'",
+        "jinja2==2.11.3; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
+        "jsonschema==3.2.0",
+        "jupyter==1.0.0",
+        "jupyter-client==6.1.12; python_version >= '3.5'",
+        "jupyter-console==6.4.0; python_version >= '3.6'",
+        "jupyter-core==4.7.1; python_version >= '3.6'",
+        "jupyterlab-pygments==0.1.2",
+        "jupyterlab-widgets==1.0.0; python_version >= '3.6'",
+        "markupsafe==1.1.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
+        "matplotlib-inline==0.1.2; python_version >= '3.5'",
+        "mistune==0.8.4",
+        "nbclient==0.5.3; python_full_version >= '3.6.1'",
+        "nbconvert==6.0.7; python_version >= '3.6'",
+        "nbformat==5.1.3; python_version >= '3.5'",
+        "nest-asyncio==1.5.1; python_version >= '3.5'",
+        "notebook==6.3.0; python_version >= '3.6'",
+        "orderedset==2.0.3",
+        "packaging==20.9; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
+        "pandocfilters==1.4.3",
+        "parso==0.8.2; python_version >= '3.6'",
+        "pexpect==4.8.0; sys_platform != 'win32'",
+        "pickleshare==0.7.5",
+        "prometheus-client==0.10.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
+        "prompt-toolkit==3.0.18; python_full_version >= '3.6.1'",
+        "ptyprocess==0.7.0; os_name != 'nt'",
+        "pycparser==2.20; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
         "pydot==1.4.2",
+        "pygments==2.9.0; python_version >= '3.5'",
         "pyparsing==2.4.7; python_version >= '2.6' and python_version not in '3.0, 3.1, 3.2, 3.3'",
+        "pyrsistent==0.17.3; python_version >= '3.5'",
+        "python-dateutil==2.8.1; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
+        "pyzmq==22.0.3; python_version >= '3.6'",
+        "qtconsole==5.1.0; python_version >= '3.6'",
+        "qtpy==1.9.0",
+        "send2trash==1.5.0",
+        "six==1.16.0; python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3'",
+        "terminado==0.9.4; python_version >= '3.6'",
+        "testpath==0.4.4",
+        "tornado==6.1; python_version >= '3.5'",
+        "traitlets==5.0.5; python_version >= '3.7'",
+        "wcwidth==0.2.5",
+        "webencodings==0.5.1",
+        "widgetsnbextension==3.5.1",
     ],  # Optional
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
@@ -182,10 +240,10 @@ setup(
     # issues, where the source is hosted, where to say thanks to the package
     # maintainers, and where to support the project financially. The key is
     # what's used to render the link text on PyPI.
-    #project_urls={  # Optional
+    # project_urls={  # Optional
     #    "Bug Reports": "https://github.com/pypa/sampleproject/issues",
     #    "Funding": "https://donate.pypi.org",
     #    "Say Thanks!": "http://saythanks.io/to/example",
     #    "Source": "https://github.com/pypa/sampleproject/",
-    #},
+    # },
 )
