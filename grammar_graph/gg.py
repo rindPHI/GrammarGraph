@@ -105,8 +105,23 @@ class GrammarGraph:
         self.bfs(action)
         return nodes
 
+    def shortest_non_trivial_path(self, source: Node, target: Node,
+                                  nodes_filter: Optional[Callable[[Node], bool]] =
+                                  lambda n: type(n) is NonterminalNode) -> List[Node]:
+        if issubclass(type(source), NonterminalNode):
+            source: NonterminalNode
+            paths: List[List[Node]] = [self.shortest_path(child, target, nodes_filter) for child in source.children]
+            sorted(paths, key=len)
+            if nodes_filter is not None and not nodes_filter(source):
+                return paths[0]
+            else:
+                return [source] + paths[0]
+
+        return []
+
     def shortest_path(self, source: Node, target: Node,
-                      nodes_filter: Optional[Callable[[Node], bool]] = lambda n: type(n) is NonterminalNode):
+                      nodes_filter: Optional[Callable[[Node], bool]] = lambda n: type(n) is NonterminalNode) \
+            -> List[Node]:
         dist, prev = self.dijkstra(source, target)
         s = []
         u = target
@@ -117,7 +132,8 @@ class GrammarGraph:
 
         return s if nodes_filter is None else list([n for n in s if nodes_filter(n)])
 
-    def dijkstra(self, source: Node, target: Optional[Node]) -> Tuple[Dict[Node, int], Dict[Node, Optional[Node]]]:
+    def dijkstra(self, source: Node, target: Optional[Node] = None) -> Tuple[
+        Dict[Node, int], Dict[Node, Optional[Node]]]:
         """Implementation of Dijkstra's algorithm with Fibonacci heap"""
         nodes = self.all_nodes()
         fh_node_map: Dict[Node, fh.Node] = {}

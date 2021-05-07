@@ -1,6 +1,7 @@
 import unittest
 
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR
+from fuzzingbook.Parser import CSV_GRAMMAR
 
 from grammar_graph.gg import GrammarGraph, Node, NonterminalNode
 
@@ -64,9 +65,24 @@ class TestGrammarGraph(unittest.TestCase):
 
     def test_dijkstra(self):
         graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
+        value = graph.get_node("<value>")
+        member = graph.get_node("<member>")
         path = list(map(lambda node: node.symbol,
-                        [node for node in graph.shortest_path(graph.get_node("<value>"), graph.get_node("<member>"))]))
+                        [node for node in graph.shortest_path(value, member)]))
         self.assertEqual(['<value>', '<object>', '<members>', '<member>'], path)
+
+    def test_nontrivial_path_json(self):
+        graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
+        members = graph.get_node("<members>")
+        path = list(map(lambda node: node.symbol,
+                        [node for node in graph.shortest_non_trivial_path(members, members)]))
+        self.assertEqual(['<members>', '<symbol-2>', '<symbol>', '<members>'], path)
+
+    def test_nontrivial_path_csv(self):
+        graph = GrammarGraph.from_grammar(CSV_GRAMMAR)
+        items = graph.get_node("<items>")
+        self.assertEqual(['<items>', '<items>'],
+                         [node.symbol for node in graph.shortest_non_trivial_path(items, items)])
 
 
 if __name__ == '__main__':
