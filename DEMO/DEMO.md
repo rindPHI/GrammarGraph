@@ -4,7 +4,6 @@ For instance, the following grammar represents a CSV file:
 
 
 ```python
-import copy
 import string
 from typing import List, Dict
 
@@ -162,6 +161,7 @@ grammar production rule along the way.
 ```python
 from fuzzingbook.Grammars import unreachable_nonterminals, is_nonterminal
 from fuzzingbook.Parser import EarleyParser
+import copy
 
 item_string = "abc"
 
