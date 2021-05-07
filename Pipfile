@@ -8,6 +8,8 @@ fuzzingbook = "*"
 pydot = "*"
 orderedset = "*"
 fibheap = "*"
+jupyter = "*"
+graphviz = "*"
 
 [dev-packages]
 pipenv-setup = "*"

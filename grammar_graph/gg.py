@@ -1,10 +1,12 @@
+import html
 import re
-from typing import List, Dict, Callable, Union, Set, Optional, Tuple, cast
+from typing import List, Dict, Callable, Union, Optional, Tuple, cast
 
-import pydot
-import sys
 import fibheap as fh
+import sys
 from fuzzingbook.Grammars import is_nonterminal, RE_NONTERMINAL
+from fuzzingbook.fuzzingbook_utils import unicode_escape
+from graphviz import Digraph
 from orderedset import OrderedSet
 
 NonterminalType = str
@@ -235,24 +237,37 @@ class GrammarGraph:
         self.bfs(action)
         return result
 
-    def to_dot(self):
-        graph = pydot.Dot('GrammarGraph', graph_type='digraph')
+    def to_dot(self) -> Digraph:
+        def node_attr(dot: Digraph, symbol: str, **attr):
+            dot.node(dot_escape(unicode_escape(symbol)), **attr)
+
+        def edge_attr(dot: Digraph, start_node: str, stop_node: str, **attr):
+            dot.edge(dot_escape(unicode_escape(start_node)), dot_escape(unicode_escape(stop_node)), **attr)
+
+        def dot_escape(s):
+            return f'<{html.escape(s)}>'.replace(":", "&#58;")
+
+        graph = Digraph(comment="GrammarGraph")
 
         def action(node: Node):
             if type(node) is TerminalNode:
-                graph.add_node(pydot.Node(node.quote_symbol(), label=Node(node.symbol).quote_symbol(), shape="box"))
+                # graph.node(node.symbol, label=Node(node.symbol).quote_symbol(), shape="box")
+                node_attr(graph, node.symbol, shape="box")
             elif type(node) is ChoiceNode:
-                graph.add_node(pydot.Node(node.quote_symbol(), shape="diamond"))
+                # graph.node(node.symbol, shape="diamond")
+                node_attr(graph, node.symbol, shape="diamond")
             else:
-                graph.add_node(pydot.Node(node.quote_symbol(), shape="circle"))
+                # graph.node(node.symbol, shape="circle")
+                node_attr(graph, node.symbol, shape="circle")
 
             if issubclass(type(node), NonterminalNode):
                 node: NonterminalNode
                 for nr, child in enumerate(node.children):
-                    graph.add_edge(pydot.Edge(node.quote_symbol(), child.quote_symbol(), label=f"<{nr + 1}>"))
+                    # graph.edge(node.symbol, child.symbol, label=f"<{nr + 1}>")
+                    edge_attr(graph, node.symbol, child.symbol, label=f"<{nr + 1}>")
 
         self.bfs(action)
-        return graph.to_string()
+        return graph
 
     @staticmethod
     def from_grammar(grammar: Grammar):
