@@ -3,6 +3,7 @@ from typing import List, Dict, Callable, Union, Set, Optional, Tuple, cast
 
 import pydot
 import sys
+import fibheap as fh
 from fuzzingbook.Grammars import is_nonterminal, RE_NONTERMINAL
 from orderedset import OrderedSet
 
@@ -21,10 +22,15 @@ class Node:
     def __hash__(self):
         return hash(self.symbol)
 
+    def __lt__(self, other):
+        # Needed for fibheap
+        return self.symbol < other.symbol
+
     def quote_symbol(self):
         return '"' + self.symbol.translate(str.maketrans({'"': r"\""})) + '"'
 
     def reachable(self, to_node: 'Node') -> bool:
+        # Note: Reachability is not reflexive!
         graph = GrammarGraph(self)
         sources = graph.filter(lambda node: issubclass(type(node), NonterminalNode) and to_node in node.children)
         return len(sources) > 0
@@ -102,32 +108,36 @@ class GrammarGraph:
         dist, prev = self.dijkstra(source, target)
         s = []
         u = target
-        if prev[u] is not None or u == source:
+        if u == source or prev[u] is not None:
             while u is not None:
                 s = [u] + s
-                u = prev[u]
+                u = None if u == source else prev[u]
 
         return s if nodes_filter is None else list([n for n in s if nodes_filter(n)])
 
     def dijkstra(self, source: Node, target: Optional[Node]) -> Tuple[Dict[Node, int], Dict[Node, Optional[Node]]]:
-        """Implementation of Dijkstra's algorithm"""
-        q: Set[Node] = set()
-
+        """Implementation of Dijkstra's algorithm with Fibonacci heap"""
         nodes = self.all_nodes()
+        fh_node_map: Dict[Node, fh.Node] = {}
+        fh_rev_node_map: Dict[fh.Node, Node] = {}
 
-        dist: Dict[Node, int] = {}
+        dist: Dict[Node, int] = {source: 0}
         prev: Dict[Node, Optional[Node]] = {}
 
+        q: fh.Fheap = fh.makefheap()
+
         for v in nodes:
-            dist[v] = sys.maxsize
-            prev[v] = None
-            q.add(v)
+            if v != source:
+                dist[v] = sys.maxsize
+                prev[v] = None
 
-        dist[source] = 0
+            fh_node = fh.Node(dist[v])
+            fh_node_map[v] = fh_node
+            fh_rev_node_map[fh_node] = v
+            q.insert(fh_node)
 
-        while q:
-            u: Node = next(v for v in q if not any(w for w in q if dist[w] < dist[v]))
-            q.remove(u)
+        while q.num_nodes:
+            u: Node = fh_rev_node_map[q.extract_min()]
 
             if u == target:
                 break
@@ -139,6 +149,7 @@ class GrammarGraph:
                     if alt < dist[v]:
                         dist[v] = alt
                         prev[v] = u
+                        q.decrease_key(fh_node_map[v], alt)
 
         return dist, prev
 

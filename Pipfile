@@ -7,6 +7,7 @@ name = "pypi"
 fuzzingbook = "*"
 pydot = "*"
 orderedset = "*"
+fibheap = "*"
 
 [dev-packages]
 pipenv-setup = "*"

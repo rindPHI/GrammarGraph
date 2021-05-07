@@ -1,4 +1,3 @@
-import typing
 import unittest
 
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR
