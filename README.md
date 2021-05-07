@@ -1,6 +1,6 @@
 # GrammarGraph
 
-Creating graphs from context-sensitive grammars for fun and profit.
+Creating graphs from context-free grammars for fun and profit.
 
 ## Features
 
