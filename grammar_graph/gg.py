@@ -1,5 +1,6 @@
 import html
 import re
+from functools import lru_cache
 from typing import List, Dict, Callable, Union, Optional, Tuple, cast
 
 import fibheap as fh
@@ -31,6 +32,7 @@ class Node:
     def quote_symbol(self):
         return '"' + self.symbol.translate(str.maketrans({'"': r"\""})) + '"'
 
+    @lru_cache
     def reachable(self, to_node: 'Node') -> bool:
         # Note: Reachability is not reflexive!
         graph = GrammarGraph(self)
@@ -73,6 +75,7 @@ class TerminalNode(Node):
 class GrammarGraph:
     def __init__(self, root):
         self.root = root
+        self.__all_nodes = None
 
     def __repr__(self):
         return f"GrammarGraph({repr(self.root)})"
@@ -95,7 +98,11 @@ class GrammarGraph:
                         visited.append(child)
                         queue.append(child)
 
+    @property
     def all_nodes(self) -> OrderedSet[Node]:
+        if self.__all_nodes is not None:
+            return self.__all_nodes
+
         nodes: OrderedSet[Node] = OrderedSet([])
 
         def action(node: Node):
@@ -103,7 +110,12 @@ class GrammarGraph:
             nodes.add(node)
 
         self.bfs(action)
+        self.__all_nodes = nodes
         return nodes
+
+    @all_nodes.setter
+    def all_nodes(self, val: OrderedSet[Node]) -> None:
+        self.__all_nodes = val
 
     def shortest_non_trivial_path(self, source: Node, target: Node,
                                   nodes_filter: Optional[Callable[[Node], bool]] =
@@ -235,10 +247,14 @@ class GrammarGraph:
 
     def get_node(self, nonterminal: str) -> Union[None, NonterminalNode]:
         assert is_nonterminal(nonterminal)
-        candidates = cast(List[NonterminalNode],
-                          self.filter(lambda node: type(node) is NonterminalNode and node.symbol == nonterminal))
+
+        candidates = [node for node in self.all_nodes
+                      if isinstance(node, NonterminalNode)
+                      and node.symbol == nonterminal]
+
         if not candidates:
             return None
+
         assert len(candidates) == 1
         return candidates[0]
 
