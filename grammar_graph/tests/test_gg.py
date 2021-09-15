@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR
@@ -70,6 +71,13 @@ class TestGrammarGraph(unittest.TestCase):
         path = list(map(lambda node: node.symbol,
                         [node for node in graph.shortest_path(value, member)]))
         self.assertEqual(['<value>', '<object>', '<members>', '<member>'], path)
+
+    def test_floyd_warshall(self):
+        graph = GrammarGraph.from_grammar(CSV_GRAMMAR)
+        distances = graph.shortest_distances()
+        self.assertEqual(4, distances[graph.get_node("<csvline>")][graph.get_node("<item>")])
+        self.assertEqual(10, distances[graph.get_node("<start>")][graph.get_node("<letter>")])
+        self.assertEqual(sys.maxsize, distances[graph.get_node("<letters>")][graph.get_node("<item>")])
 
     def test_nontrivial_path_json(self):
         graph = GrammarGraph.from_grammar(JSON_GRAMMAR)

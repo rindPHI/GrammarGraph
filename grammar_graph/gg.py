@@ -76,6 +76,7 @@ class GrammarGraph:
     def __init__(self, root):
         self.root = root
         self.__all_nodes = None
+        self.__all_edges = None
 
     def __repr__(self):
         return f"GrammarGraph({repr(self.root)})"
@@ -117,6 +118,24 @@ class GrammarGraph:
     def all_nodes(self, val: OrderedSet[Node]) -> None:
         self.__all_nodes = val
 
+    @property
+    def all_edges(self) -> OrderedSet[Tuple[Node, Node]]:
+        if self.__all_edges is not None:
+            return self.__all_edges
+
+        result = OrderedSet()
+        for node in self.all_nodes:
+            if not isinstance(node, NonterminalNode):
+                continue
+            result.update({(node, child) for child in node.children})
+
+        self.__all_edges = result
+        return result
+
+    @all_edges.setter
+    def all_edges(self, val: OrderedSet[Tuple[Node, Node]]) -> None:
+        self.__all_edges = val
+
     def shortest_non_trivial_path(self, source: Node, target: Node,
                                   nodes_filter: Optional[Callable[[Node], bool]] =
                                   lambda n: type(n) is NonterminalNode) -> List[Node]:
@@ -143,6 +162,24 @@ class GrammarGraph:
                 u = None if u == source else prev[u]
 
         return s if nodes_filter is None else list([n for n in s if nodes_filter(n)])
+
+    def shortest_distances(self, infinity: int = sys.maxsize) -> Dict[Node, Dict[Node, int]]:
+        """Implementation of the Floyd-Warshall algorithm for finding shortest distances between all paths"""
+        dist: Dict[Node, Dict[Node, int]] = {u: {v: infinity for v in self.all_nodes} for u in self.all_nodes}
+
+        for (u, v) in self.all_edges:
+            dist.setdefault(u, {})[v] = 1
+
+        for v in self.all_nodes:
+            dist.setdefault(v, {})[v] = 0
+
+        for k in self.all_nodes:
+            for i in self.all_nodes:
+                for j in self.all_nodes:
+                    if dist[i][j] > dist[i][k] + dist[k][j]:
+                        dist[i][j] = dist[i][k] + dist[k][j]
+
+        return dist
 
     def dijkstra(self, source: Node, target: Optional[Node] = None) -> Tuple[
         Dict[Node, int], Dict[Node, Optional[Node]]]:
