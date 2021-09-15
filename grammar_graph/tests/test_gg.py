@@ -1,10 +1,12 @@
+import random
 import sys
 import unittest
+from typing import Dict
 
-from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR
+from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal
 from fuzzingbook.Parser import CSV_GRAMMAR
 
-from grammar_graph.gg import GrammarGraph, Node, NonterminalNode
+from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode
 
 
 class TestGrammarGraph(unittest.TestCase):
@@ -78,6 +80,33 @@ class TestGrammarGraph(unittest.TestCase):
         self.assertEqual(4, distances[graph.get_node("<csvline>")][graph.get_node("<item>")])
         self.assertEqual(10, distances[graph.get_node("<start>")][graph.get_node("<letter>")])
         self.assertEqual(sys.maxsize, distances[graph.get_node("<letters>")][graph.get_node("<item>")])
+        self.assertEqual(2, distances[graph.get_node("<letters>")][graph.get_node("<letters>")])
+
+    def test_reachability_via_floyd_warshall(self):
+        graph = GrammarGraph.from_grammar(CSV_GRAMMAR)
+        node_distances = graph.shortest_distances()
+
+        str_node_distances: [Dict[str, Dict[str, int]]] = {
+            u.symbol: {
+                v.symbol: dist
+                for v, dist in node_distances[u].items()
+                if not isinstance(v, ChoiceNode)
+            }
+            for u in graph.all_nodes
+            if type(u) is NonterminalNode
+        }
+
+        self.assertTrue(all(is_nonterminal(u) for u in str_node_distances))
+
+        for _ in range(500):
+            u = random.choice(list(CSV_GRAMMAR.keys()))
+            v = random.choice(list(CSV_GRAMMAR.keys()))
+
+            self.assertEqual(
+                graph.get_node(u).reachable(graph.get_node(v)),
+                str_node_distances[u][v] < sys.maxsize,
+                f"Differing result for {u} and {v}"
+            )
 
     def test_nontrivial_path_json(self):
         graph = GrammarGraph.from_grammar(JSON_GRAMMAR)

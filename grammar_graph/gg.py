@@ -170,8 +170,8 @@ class GrammarGraph:
         for (u, v) in self.all_edges:
             dist.setdefault(u, {})[v] = 1
 
-        for v in self.all_nodes:
-            dist.setdefault(v, {})[v] = 0
+        # for v in self.all_nodes:
+        #     dist.setdefault(v, {})[v] = 0
 
         for k in self.all_nodes:
             for i in self.all_nodes:
