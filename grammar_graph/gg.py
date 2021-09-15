@@ -147,7 +147,7 @@ class GrammarGraph:
     def dijkstra(self, source: Node, target: Optional[Node] = None) -> Tuple[
         Dict[Node, int], Dict[Node, Optional[Node]]]:
         """Implementation of Dijkstra's algorithm with Fibonacci heap"""
-        nodes = self.all_nodes()
+        nodes = self.all_nodes
         fh_node_map: Dict[Node, fh.Node] = {}
         fh_rev_node_map: Dict[fh.Node, Node] = {}
 
