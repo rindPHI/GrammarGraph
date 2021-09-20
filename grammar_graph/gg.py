@@ -139,14 +139,25 @@ class GrammarGraph:
     def shortest_non_trivial_path(self, source: Node, target: Node,
                                   nodes_filter: Optional[Callable[[Node], bool]] =
                                   lambda n: type(n) is NonterminalNode) -> List[Node]:
+        if nodes_filter is None:
+            def nodes_filter(n):
+                return True
+
         if issubclass(type(source), NonterminalNode):
             source: NonterminalNode
+
             paths: List[List[Node]] = [self.shortest_path(child, target, nodes_filter) for child in source.children]
+            paths = [path for path in paths if path]
+
             sorted(paths, key=len)
-            if nodes_filter is not None and not nodes_filter(source):
-                return paths[0]
+            result: List[Node]
+            if not nodes_filter(source):
+                result = paths[0]
             else:
-                return [source] + paths[0]
+                result = [source] + paths[0]
+
+            assert not nodes_filter(target) or result[-1] == target
+            return result
 
         return []
 

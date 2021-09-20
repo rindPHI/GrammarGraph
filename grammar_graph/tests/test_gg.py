@@ -1,9 +1,10 @@
 import random
+import string
 import sys
 import unittest
 from typing import Dict
 
-from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal
+from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal, srange
 from fuzzingbook.Parser import CSV_GRAMMAR
 
 from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode
@@ -121,6 +122,65 @@ class TestGrammarGraph(unittest.TestCase):
         self.assertEqual(['<items>', '<items>'],
                          [node.symbol for node in graph.shortest_non_trivial_path(items, items)])
 
+    def test_tinyc_shortest_path(self):
+        graph = GrammarGraph.from_grammar(TINYC_GRAMMAR)
+        source = graph.get_node("<term>")
+        target = graph.get_node("<expr>")
 
+        sh_nt_path = [node.symbol for node in graph.shortest_non_trivial_path(source, target)]
+        self.assertEqual("<term>", sh_nt_path[0])
+        self.assertEqual("<expr>", sh_nt_path[-1])
+
+        sh_path = [node.symbol for node in graph.shortest_path(source, target)]
+        self.assertEqual("<term>", sh_path[0])
+        self.assertEqual("<expr>", sh_path[-1])
+
+
+TINYC_GRAMMAR = {
+    "<start>": ["<mwss><statement><mwss>"],
+    "<statement>": [
+        "if<mwss><paren_expr><mwss><statement>",
+        "if<mwss><paren_expr><mwss><statement><mwss>else<wss><statement>",
+        "while<mwss><paren_expr><mwss><statement>",
+        "do<wss><statement>while<mwss><paren_expr><mwss>;",
+        "{<mwss><statements><mwss>}",
+        "<mwss><expr><mwss>;",
+        ";"
+    ],
+    "<statements>": ["", "<statement>", "<statement><mwss><statements>"],
+    "<paren_expr>": ["(<mwss><expr><mwss>)"],
+    "<expr>": [
+        "<test>",
+        "<id><mwss>=<mwss><expr>"
+    ],
+    "<test>": [
+        "<sum>",
+        "<sum><mwss><<mwss><sum>"
+    ],
+    "<sum>": [
+        "<term>",
+        "<sum><mwss>+<mwss><term>",
+        "<sum><mwss>-<mwss><term>"
+    ],
+    "<term>": [
+        "<id>",
+        "<int>",
+        "<paren_expr>"
+    ],
+    "<id>": srange(string.ascii_lowercase),
+    "<int>": [
+        "<digit>",
+        "<digit_nonzero><digits>"
+    ],
+    "<digits>": [
+        "<digit>",
+        "<digit><int>"
+    ],
+    "<digit>": srange(string.digits),
+    "<digit_nonzero>": list(set(srange(string.digits)) - {"0"}),
+    "<mwss>": ["", "<wss>"],
+    "<wss>": ["<ws>", "<ws><wss>"],
+    "<ws>": srange(" \n\t"),
+}
 if __name__ == '__main__':
     unittest.main()
