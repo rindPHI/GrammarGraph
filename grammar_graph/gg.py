@@ -36,7 +36,8 @@ class Node:
     def reachable(self, to_node: 'Node') -> bool:
         # Note: Reachability is not reflexive!
         graph = GrammarGraph(self)
-        sources = graph.filter(lambda node: issubclass(type(node), NonterminalNode) and to_node in node.children)
+        f = lambda node: isinstance(node, NonterminalNode) and to_node in node.children
+        sources = graph.filter(f, f)
         return len(sources) > 0
 
 
@@ -306,13 +307,15 @@ class GrammarGraph:
         assert len(candidates) == 1
         return candidates[0]
 
-    def filter(self, f: Callable[[Node], bool]) -> List[Node]:
+    def filter(self, f: Callable[[Node], bool], abort: Callable[[Node], bool] = lambda n: False) -> List[Node]:
         result: List[Node] = []
 
-        def action(node: Node):
+        def action(node: Node) -> bool:
             nonlocal result
             if f(node):
                 result.append(node)
+
+            return abort(node)
 
         self.bfs(action)
         return result
