@@ -295,6 +295,13 @@ class GrammarGraph:
         return result
 
     def get_node(self, nonterminal: str) -> Union[None, NonterminalNode]:
+        """
+        This method is limited to nonterminals since for terminal nodes, there might be multiple
+        results with different IDs. Use `filter` instead.
+
+        :param nonterminal: The nonterminal for which to get a node.
+        :return: The corresponding `NonterminalNode` of none if none found.
+        """
         assert is_nonterminal(nonterminal)
 
         candidates = [node for node in self.all_nodes

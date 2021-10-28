@@ -7,7 +7,7 @@ from typing import Dict
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal, srange
 from fuzzingbook.Parser import CSV_GRAMMAR
 
-from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode
+from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode
 
 
 class TestGrammarGraph(unittest.TestCase):
@@ -82,6 +82,18 @@ class TestGrammarGraph(unittest.TestCase):
         self.assertEqual(10, distances[graph.get_node("<start>")][graph.get_node("<letter>")])
         self.assertEqual(sys.maxsize, distances[graph.get_node("<letters>")][graph.get_node("<item>")])
         self.assertEqual(2, distances[graph.get_node("<letters>")][graph.get_node("<letters>")])
+
+    def test_get_terminal_node(self):
+        graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
+        try:
+            graph.get_node("1")
+            self.fail()
+        except AssertionError:
+            pass
+
+        one_nodes = graph.filter(lambda n: n.symbol == "1")
+        self.assertTrue(all(isinstance(one_node, TerminalNode) for one_node in one_nodes))
+        self.assertEqual(2, len(one_nodes))
 
     def test_reachability_via_floyd_warshall(self):
         graph = GrammarGraph.from_grammar(CSV_GRAMMAR)
