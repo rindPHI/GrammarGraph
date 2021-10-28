@@ -5,7 +5,7 @@ import unittest
 from typing import Dict
 
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal, srange
-from fuzzingbook.Parser import CSV_GRAMMAR
+from fuzzingbook.Parser import CSV_GRAMMAR, EarleyParser
 
 from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode
 
@@ -146,6 +146,26 @@ class TestGrammarGraph(unittest.TestCase):
         sh_path = [node.symbol for node in graph.shortest_path(source, target)]
         self.assertEqual("<term>", sh_path[0])
         self.assertEqual("<expr>", sh_path[-1])
+
+    def test_k_path_coverage(self):
+        expr_grammar = {
+            "<start>": ["<add_expr>"],
+            "<add_expr>": ["<mult_expr>", "<add_expr> <add_symbol> <mult_expr>"],
+            "<add_symbol>": ["+", "-"],
+            "<mult_expr>": ["<unary_expr>", "<mult_expr> <mult_symbol> <unary_expr>"],
+            "<mult_symbol>": ["*", "/", "%"],
+            "<unary_expr>": ["<id>", "<unary_symbol><unary_expr>", "(<add_expr>)", "<dec_digits>"],
+            "<unary_symbol>": ["+", "-", "++", "--"],
+            "<dec_digits>": ["<dec_digit><maybe_dec_digits>"],
+            "<maybe_dec_digits>": ["", "<dec_digits>"],
+            "<dec_digit>": srange(string.digits),
+            "<id>": ["x", "y", "z"]
+        }
+
+        parser = EarleyParser(expr_grammar)
+        tree = list(parser.parse("x + 42"))[0]
+        graph = GrammarGraph.from_grammar(expr_grammar)
+        self.assertEqual(11, int(graph.k_path_coverage(tree, 3) * 100))  # 11% coverage
 
 
 TINYC_GRAMMAR = {

@@ -12,6 +12,7 @@ from orderedset import OrderedSet
 
 NonterminalType = str
 Grammar = Dict[NonterminalType, List[str]]
+ParseTree = Tuple[str, Optional[List['ParseTree']]]
 
 
 def split_expansion(expansion: str) -> List[str]:
@@ -326,6 +327,90 @@ class GrammarGraph:
 
         self.bfs(action)
         return result
+
+    def graph_paths_from_tree(self, tree: ParseTree) -> OrderedSet[Tuple[Node, ...]]:
+        node, children = tree
+        assert is_nonterminal(node), "Terminal nodes are ambiguous, have to be obtained from parents"
+
+        g_node = self.get_node(node)
+
+        if children is None:
+            return OrderedSet([(g_node,)])
+
+        # Find suitable choice node
+        choice_nodes: List[ChoiceNode] = cast(List[ChoiceNode], g_node.children)
+
+        if not children:
+            # Epsilon transitions
+            choice_node: ChoiceNode = next(
+                choice_node for choice_node in choice_nodes
+                if len(choice_node.children) == 1 and not choice_node.children[0].symbol
+            )
+        else:
+            tree_children_symbols = [child[0] for child in children]
+            choice_node: ChoiceNode = next(
+                choice_node for choice_node in choice_nodes
+                if [child.symbol for child in choice_node.children] == tree_children_symbols
+            )
+
+        result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
+
+        for child_idx, child in enumerate(children):
+            # Nonterminal children
+            if not is_nonterminal(child[0]):
+                result.add((g_node, choice_node, choice_node.children[child_idx]))
+                continue
+
+            result.update([(g_node, choice_node) + path for path in self.graph_paths_from_tree(child)])
+
+        return result
+
+    def k_paths_in_tree(self, tree: ParseTree, k: int) -> OrderedSet[Tuple[Node, ...]]:
+        assert k > 0
+        k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
+        all_paths = self.graph_paths_from_tree(tree)
+        return OrderedSet([
+            kpath
+            for path in all_paths
+            for kpath in [path[i:i + k] for i in range(0, len(all_paths), 1)]
+            if (len(kpath) == k and
+                not isinstance(kpath[0], ChoiceNode) and
+                not isinstance(kpath[-1], ChoiceNode))
+        ])
+
+    @lru_cache(maxsize=None)
+    def k_paths(self, k: int) -> OrderedSet[Tuple[Node, ...]]:
+        assert k > 0
+        k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
+        result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
+
+        for node in self.all_nodes:
+            if not isinstance(node, NonterminalNode):
+                continue
+
+            node_result: OrderedSet[Tuple[Node, ...]] = OrderedSet([(node,)])
+            for _ in range(k - 1):
+                new_node_result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
+                path: Tuple[Node, ...]
+                for path in node_result:
+                    last_node = path[-1]
+                    if isinstance(last_node, TerminalNode):
+                        continue
+
+                    new_node_result.update([path + (child,) for child in cast(NonterminalNode, last_node).children])
+
+                node_result = new_node_result
+
+            result.update(node_result)
+
+        return OrderedSet([
+            kpath for kpath in result
+            if (len(kpath) == k and
+                not isinstance(kpath[0], ChoiceNode) and
+                not isinstance(kpath[-1], ChoiceNode))])
+
+    def k_path_coverage(self, tree: ParseTree, k: int) -> float:
+        return len(self.k_paths_in_tree(tree, k)) / len(self.k_paths(k))
 
     def to_dot(self) -> Digraph:
         def node_attr(dot: Digraph, symbol: str, **attr):
