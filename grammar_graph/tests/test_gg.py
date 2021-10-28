@@ -1,9 +1,11 @@
+import copy
 import random
 import string
 import sys
 import unittest
 from typing import Dict
 
+from fuzzingbook.GrammarCoverageFuzzer import GrammarCoverageFuzzer
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal, srange
 from fuzzingbook.Parser import CSV_GRAMMAR, EarleyParser
 
@@ -148,25 +150,47 @@ class TestGrammarGraph(unittest.TestCase):
         self.assertEqual("<expr>", sh_path[-1])
 
     def test_k_path_coverage(self):
-        expr_grammar = {
-            "<start>": ["<add_expr>"],
-            "<add_expr>": ["<mult_expr>", "<add_expr> <add_symbol> <mult_expr>"],
-            "<add_symbol>": ["+", "-"],
-            "<mult_expr>": ["<unary_expr>", "<mult_expr> <mult_symbol> <unary_expr>"],
-            "<mult_symbol>": ["*", "/", "%"],
-            "<unary_expr>": ["<id>", "<unary_symbol><unary_expr>", "(<add_expr>)", "<dec_digits>"],
-            "<unary_symbol>": ["+", "-", "++", "--"],
-            "<dec_digits>": ["<dec_digit><maybe_dec_digits>"],
-            "<maybe_dec_digits>": ["", "<dec_digits>"],
-            "<dec_digit>": srange(string.digits),
-            "<id>": ["x", "y", "z"]
-        }
-
-        parser = EarleyParser(expr_grammar)
+        parser = EarleyParser(EXPR_GRAMMAR)
         tree = list(parser.parse("x + 42"))[0]
-        graph = GrammarGraph.from_grammar(expr_grammar)
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         self.assertEqual(11, int(graph.k_path_coverage(tree, 3) * 100))  # 11% coverage
 
+    def test_nonterminal_kpaths(self):
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
+        for nonterminal in EXPR_GRAMMAR:
+            for k in range(1, 5):
+                self.assertEqual(graph.subgraph(nonterminal).k_paths(k), graph.nonterminal_kpaths(nonterminal, k))
+                self.assertEqual(
+                    graph.nonterminal_kpaths(nonterminal, k), graph.k_paths_in_tree((nonterminal, None), k),
+                    f"{k}-paths differ foor nonterminal {nonterminal}"
+                )
+
+    def test_k_path_coverage_open_tree(self):
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
+
+        tree = ("<start>", [("<add_expr>", [("<mult_expr>", [("<unary_expr>", None)])])])
+        orig_3_paths = graph.k_paths_in_tree(tree, 3)
+        fuzzer = GrammarCoverageFuzzer(EXPR_GRAMMAR)
+        for _ in range(100):
+            complete_tree = fuzzer.expand_tree(copy.deepcopy(tree))
+            complete_3_paths = graph.k_paths_in_tree(complete_tree, 3)
+            self.assertLess(len(complete_3_paths), len(orig_3_paths))
+            self.assertTrue(complete_3_paths.issubset(orig_3_paths))
+
+
+EXPR_GRAMMAR = {
+    "<start>": ["<add_expr>"],
+    "<add_expr>": ["<mult_expr>", "<add_expr> <add_symbol> <mult_expr>"],
+    "<add_symbol>": ["+", "-"],
+    "<mult_expr>": ["<unary_expr>", "<mult_expr> <mult_symbol> <unary_expr>"],
+    "<mult_symbol>": ["*", "/", "%"],
+    "<unary_expr>": ["<id>", "<unary_symbol><unary_expr>", "(<add_expr>)", "<dec_digits>"],
+    "<unary_symbol>": ["+", "-", "++", "--"],
+    "<dec_digits>": ["<dec_digit><maybe_dec_digits>"],
+    "<maybe_dec_digits>": ["", "<dec_digits>"],
+    "<dec_digit>": srange(string.digits),
+    "<id>": ["x", "y", "z"]
+}
 
 TINYC_GRAMMAR = {
     "<start>": ["<mwss><statement><mwss>"],

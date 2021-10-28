@@ -1,4 +1,6 @@
+import copy
 import html
+import json
 import re
 from functools import lru_cache
 from typing import List, Dict, Callable, Union, Optional, Tuple, cast
@@ -26,6 +28,12 @@ class Node:
     def __hash__(self):
         return hash(self.symbol)
 
+    def __eq__(self, other):
+        return type(other) == type(self) and self.symbol == other.symbol
+
+    def to_json(self):
+        raise NotImplemented()
+
     def __lt__(self, other):
         # Needed for fibheap
         return self.symbol < other.symbol
@@ -50,6 +58,14 @@ class NonterminalNode(Node):
     def __repr__(self):
         return f"NonterminalNode({self.quote_symbol()}, {repr(self.children)})"
 
+    def __hash__(self):
+        return hash((self.symbol, tuple([child.symbol for child in self.children])))
+
+    def __eq__(self, other):
+        return (isinstance(other, NonterminalNode) and
+                self.symbol == other.symbol and
+                [child.symbol for child in self.children] == [child.symbol for child in other.children])
+
 
 class ChoiceNode(NonterminalNode):
     def __init__(self, symbol: str, children: List[Node]):
@@ -70,6 +86,9 @@ class TerminalNode(Node):
     def __hash__(self):
         return hash((self.symbol, self.id))
 
+    def __eq__(self, other):
+        return isinstance(other, TerminalNode) and self.id == other.id and super().__eq__(other)
+
     def quote_symbol(self):
         return Node(f"{self.symbol}-{self.id}").quote_symbol()
 
@@ -82,6 +101,12 @@ class GrammarGraph:
 
     def __repr__(self):
         return f"GrammarGraph({repr(self.root)})"
+
+    def __eq__(self, other):
+        return isinstance(other, GrammarGraph) and self.to_grammar() == other.to_grammar()
+
+    def __hash__(self):
+        return hash(json.dumps(self.to_grammar()))
 
     def bfs(self, action: Callable[[Node], Union[None, bool]], start_node: Union[None, Node] = None):
         if start_node is None:
@@ -328,14 +353,23 @@ class GrammarGraph:
         self.bfs(action)
         return result
 
-    def graph_paths_from_tree(self, tree: ParseTree) -> OrderedSet[Tuple[Node, ...]]:
+    @lru_cache(maxsize=None)
+    def nonterminal_kpaths(self, node: Union[NonterminalNode, str], k: int) -> OrderedSet[Tuple[Node, ...]]:
+        if isinstance(node, str):
+            assert is_nonterminal(node)
+            node = self.get_node(node)
+
+        subgraph = self.subgraph(node)
+        return subgraph.k_paths(k)
+
+    def graph_paths_from_tree(self, tree: ParseTree) -> OrderedSet[Tuple[Optional[Node], ...]]:
         node, children = tree
         assert is_nonterminal(node), "Terminal nodes are ambiguous, have to be obtained from parents"
 
         g_node = self.get_node(node)
 
         if children is None:
-            return OrderedSet([(g_node,)])
+            return OrderedSet([(g_node, None)])
 
         # Find suitable choice node
         choice_nodes: List[ChoiceNode] = cast(List[ChoiceNode], g_node.children)
@@ -367,16 +401,37 @@ class GrammarGraph:
 
     def k_paths_in_tree(self, tree: ParseTree, k: int) -> OrderedSet[Tuple[Node, ...]]:
         assert k > 0
+        orig_k = k
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
-        all_paths = self.graph_paths_from_tree(tree)
-        return OrderedSet([
+
+        all_paths: OrderedSet[Tuple[Node, ...]] = self.graph_paths_from_tree(tree)
+
+        # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
+        all_paths = OrderedSet([path for l in [
+            [path] if path[-1] is not None
+            else [path[:-2] + possible_kpath for possible_kpath in self.nonterminal_kpaths(path[-2], orig_k)]
+            for path in all_paths
+        ] for path in l])
+
+        kpath: Tuple[Node, ...]
+        result = OrderedSet([
             kpath
             for path in all_paths
             for kpath in [path[i:i + k] for i in range(0, len(all_paths), 1)]
             if (len(kpath) == k and
                 not isinstance(kpath[0], ChoiceNode) and
                 not isinstance(kpath[-1], ChoiceNode))
-        ])
+        ]).intersection(self.k_paths(orig_k))
+
+        def path_to_string(p) -> str:
+            return " ".join([n.symbol for n in p])
+
+        # collisions = [
+        #     path for path in result
+        #     if len([p for p in result if path_to_string(p) == path_to_string(path)]) > 1]
+        # assert not collisions
+
+        return result
 
     @lru_cache(maxsize=None)
     def k_paths(self, k: int) -> OrderedSet[Tuple[Node, ...]]:
