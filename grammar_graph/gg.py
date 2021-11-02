@@ -54,12 +54,15 @@ class NonterminalNode(Node):
     def __init__(self, symbol: str, children: List[Node]):
         super().__init__(symbol)
         self.children = children  # in fact, all children will be ChoiceNode instances.
+        self.__hash = None
 
     def __repr__(self):
         return f"NonterminalNode({self.quote_symbol()}, {repr(self.children)})"
 
     def __hash__(self):
-        return hash((self.symbol, tuple([child.symbol for child in self.children])))
+        if self.__hash is None:
+            self.__hash = hash((self.symbol, tuple([child.symbol for child in self.children])))
+        return self.__hash
 
     def __eq__(self, other):
         return (isinstance(other, NonterminalNode) and
