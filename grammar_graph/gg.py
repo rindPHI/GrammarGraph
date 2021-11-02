@@ -98,6 +98,7 @@ class GrammarGraph:
         self.root = root
         self.__all_nodes = None
         self.__all_edges = None
+        self.__hash = None
 
     def __repr__(self):
         return f"GrammarGraph({repr(self.root)})"
@@ -106,7 +107,9 @@ class GrammarGraph:
         return isinstance(other, GrammarGraph) and self.to_grammar() == other.to_grammar()
 
     def __hash__(self):
-        return hash(json.dumps(self.to_grammar()))
+        if self.__hash is None:
+            self.__hash = hash(json.dumps(self.to_grammar()))
+        return self.__hash
 
     def bfs(self, action: Callable[[Node], Union[None, bool]], start_node: Union[None, Node] = None):
         if start_node is None:
@@ -354,13 +357,13 @@ class GrammarGraph:
         return result
 
     @lru_cache(maxsize=None)
-    def nonterminal_kpaths(self, node: Union[NonterminalNode, str], k: int) -> OrderedSet[Tuple[Node, ...]]:
+    def nonterminal_kpaths(self, node: Union[NonterminalNode, str], k: int) -> List[Tuple[Node, ...]]:
         if isinstance(node, str):
             assert is_nonterminal(node)
             node = self.get_node(node)
 
         subgraph = self.subgraph(node)
-        return subgraph.k_paths(k)
+        return [p for p in subgraph.k_paths(k) if p[0] == node]
 
     def graph_paths_from_tree(self, tree: ParseTree) -> OrderedSet[Tuple[Optional[Node], ...]]:
         node, children = tree
@@ -400,17 +403,18 @@ class GrammarGraph:
         return result
 
     def k_paths_in_tree(self, tree: ParseTree, k: int) -> OrderedSet[Tuple[Node, ...]]:
+        # TODO: This does not always work for open trees! See "hack" comment below.
         assert k > 0
         orig_k = k
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
 
-        all_paths: OrderedSet[Tuple[Node, ...]] = self.graph_paths_from_tree(tree)
-
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
         all_paths = OrderedSet([path for l in [
             [path] if path[-1] is not None
-            else [path[:-2] + possible_kpath for possible_kpath in self.nonterminal_kpaths(path[-2], orig_k)]
-            for path in all_paths
+            else [path[:-2] + possible_kpath
+                  for possible_kpath in
+                  self.nonterminal_kpaths(path[-2], orig_k + 4)]  # <== + 4 is a hack which works for k<5 in experiment
+            for path in self.graph_paths_from_tree(tree)
         ] for path in l])
 
         kpath: Tuple[Node, ...]
@@ -423,9 +427,9 @@ class GrammarGraph:
                 not isinstance(kpath[-1], ChoiceNode))
         ]).intersection(self.k_paths(orig_k))
 
-        def path_to_string(p) -> str:
-            return " ".join([n.symbol for n in p])
-
+        # def path_to_string(p) -> str:
+        #     return " ".join([n.symbol for n in p])
+        #
         # collisions = [
         #     path for path in result
         #     if len([p for p in result if path_to_string(p) == path_to_string(path)]) > 1]
@@ -434,35 +438,35 @@ class GrammarGraph:
         return result
 
     @lru_cache(maxsize=None)
-    def k_paths(self, k: int) -> OrderedSet[Tuple[Node, ...]]:
+    def k_paths(self, k: int) -> List[Tuple[Node, ...]]:
         assert k > 0
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
-        result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
+        result: List[Tuple[Node, ...]] = []
 
         for node in self.all_nodes:
             if not isinstance(node, NonterminalNode):
                 continue
 
-            node_result: OrderedSet[Tuple[Node, ...]] = OrderedSet([(node,)])
+            node_result: List[Tuple[Node, ...]] = [(node,)]
             for _ in range(k - 1):
-                new_node_result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
+                new_node_result: List[Tuple[Node, ...]] = []
                 path: Tuple[Node, ...]
                 for path in node_result:
                     last_node = path[-1]
                     if isinstance(last_node, TerminalNode):
                         continue
 
-                    new_node_result.update([path + (child,) for child in cast(NonterminalNode, last_node).children])
+                    new_node_result.extend([path + (child,) for child in cast(NonterminalNode, last_node).children])
 
                 node_result = new_node_result
 
-            result.update(node_result)
+            result.extend(node_result)
 
-        return OrderedSet([
+        return [
             kpath for kpath in result
             if (len(kpath) == k and
                 not isinstance(kpath[0], ChoiceNode) and
-                not isinstance(kpath[-1], ChoiceNode))])
+                not isinstance(kpath[-1], ChoiceNode))]
 
     def k_path_coverage(self, tree: ParseTree, k: int) -> float:
         return len(self.k_paths_in_tree(tree, k)) / len(self.k_paths(k))

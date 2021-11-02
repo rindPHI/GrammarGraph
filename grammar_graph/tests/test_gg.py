@@ -12,6 +12,10 @@ from fuzzingbook.Parser import CSV_GRAMMAR, EarleyParser
 from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode
 
 
+def path_to_string(p) -> str:
+    return " ".join([n.symbol for n in p])
+
+
 class TestGrammarGraph(unittest.TestCase):
 
     # def test_todot(self):
@@ -149,6 +153,12 @@ class TestGrammarGraph(unittest.TestCase):
         self.assertEqual("<term>", sh_path[0])
         self.assertEqual("<expr>", sh_path[-1])
 
+    def test_grammar_k_paths(self):
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
+        str_paths = [", ".join([n.symbol for n in p if not isinstance(n, ChoiceNode)]) for p in graph.k_paths(3)]
+        # print("\n".join(str_paths))
+        self.assertEqual(85, len(str_paths))
+
     def test_k_path_coverage(self):
         parser = EarleyParser(EXPR_GRAMMAR)
         tree = list(parser.parse("x + 42"))[0]
@@ -159,7 +169,9 @@ class TestGrammarGraph(unittest.TestCase):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         for nonterminal in EXPR_GRAMMAR:
             for k in range(1, 5):
-                self.assertEqual(graph.subgraph(nonterminal).k_paths(k), graph.nonterminal_kpaths(nonterminal, k))
+                self.assertEqual(
+                    [p for p in graph.subgraph(nonterminal).k_paths(k) if p[0].symbol == nonterminal],
+                    graph.nonterminal_kpaths(nonterminal, k))
                 self.assertEqual(
                     graph.nonterminal_kpaths(nonterminal, k), graph.k_paths_in_tree((nonterminal, None), k),
                     f"{k}-paths differ foor nonterminal {nonterminal}"
@@ -169,13 +181,14 @@ class TestGrammarGraph(unittest.TestCase):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
 
         tree = ("<start>", [("<add_expr>", [("<mult_expr>", [("<unary_expr>", None)])])])
-        orig_3_paths = graph.k_paths_in_tree(tree, 3)
-        fuzzer = GrammarCoverageFuzzer(EXPR_GRAMMAR)
-        for _ in range(100):
-            complete_tree = fuzzer.expand_tree(copy.deepcopy(tree))
-            complete_3_paths = graph.k_paths_in_tree(complete_tree, 3)
-            self.assertLess(len(complete_3_paths), len(orig_3_paths))
-            self.assertTrue(complete_3_paths.issubset(orig_3_paths))
+        for i in range(1, 5):
+            orig_3_paths = graph.k_paths_in_tree(tree, i)
+            fuzzer = GrammarCoverageFuzzer(EXPR_GRAMMAR)
+            for _ in range(100):
+                complete_tree = fuzzer.expand_tree(copy.deepcopy(tree))
+                complete_3_paths = graph.k_paths_in_tree(complete_tree, i)
+                self.assertLessEqual(len(complete_3_paths), len(orig_3_paths))
+                self.assertTrue(complete_3_paths.issubset(orig_3_paths))
 
 
 EXPR_GRAMMAR = {
