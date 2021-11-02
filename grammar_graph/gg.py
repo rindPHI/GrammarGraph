@@ -363,7 +363,7 @@ class GrammarGraph:
             node = self.get_node(node)
 
         subgraph = self.subgraph(node)
-        return [p for p in subgraph.k_paths(k) if p[0] == node]
+        return [p for p in subgraph.k_paths(k) if p[0] != subgraph.root]
 
     def graph_paths_from_tree(self, tree: ParseTree) -> OrderedSet[Tuple[Optional[Node], ...]]:
         node, children = tree
@@ -403,7 +403,6 @@ class GrammarGraph:
         return result
 
     def k_paths_in_tree(self, tree: ParseTree, k: int) -> OrderedSet[Tuple[Node, ...]]:
-        # TODO: This does not always work for open trees! See "hack" comment below.
         assert k > 0
         orig_k = k
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
@@ -413,7 +412,7 @@ class GrammarGraph:
             [path] if path[-1] is not None
             else [path[:-2] + possible_kpath
                   for possible_kpath in
-                  self.nonterminal_kpaths(path[-2], orig_k + 4)]  # <== + 4 is a hack which works for k<5 in experiment
+                  self.nonterminal_kpaths(path[-2], orig_k)]
             for path in self.graph_paths_from_tree(tree)
         ] for path in l])
 
@@ -421,7 +420,7 @@ class GrammarGraph:
         result = OrderedSet([
             kpath
             for path in all_paths
-            for kpath in [path[i:i + k] for i in range(0, len(all_paths), 1)]
+            for kpath in [path[i:i + k] for i in range(0, len(path), 1)]
             if (len(kpath) == k and
                 not isinstance(kpath[0], ChoiceNode) and
                 not isinstance(kpath[-1], ChoiceNode))

@@ -163,17 +163,18 @@ class TestGrammarGraph(unittest.TestCase):
         parser = EarleyParser(EXPR_GRAMMAR)
         tree = list(parser.parse("x + 42"))[0]
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
-        self.assertEqual(11, int(graph.k_path_coverage(tree, 3) * 100))  # 11% coverage
+        self.assertEqual(21, int(graph.k_path_coverage(tree, 3) * 100))  # 21% coverage
 
     def test_nonterminal_kpaths(self):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         for nonterminal in EXPR_GRAMMAR:
             for k in range(1, 5):
                 self.assertEqual(
-                    [p for p in graph.subgraph(nonterminal).k_paths(k) if p[0].symbol == nonterminal],
+                    [p for p in graph.subgraph(nonterminal).k_paths(k) if p[0].symbol != "<start>"],
                     graph.nonterminal_kpaths(nonterminal, k))
                 self.assertEqual(
-                    graph.nonterminal_kpaths(nonterminal, k), graph.k_paths_in_tree((nonterminal, None), k),
+                    graph.nonterminal_kpaths(nonterminal, k),
+                    graph.k_paths_in_tree((nonterminal, None), k),
                     f"{k}-paths differ foor nonterminal {nonterminal}"
                 )
 
