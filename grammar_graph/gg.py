@@ -388,10 +388,30 @@ class GrammarGraph:
             )
         else:
             tree_children_symbols = [child[0] for child in children]
-            choice_node: ChoiceNode = next(
+
+            # Note: Sometimes, the parser seems to "skip" a nonterminal with a possible epsilon-production,
+            # as in "<maybe_nuls>: <epsilon> | <nuls>", for which only "<nuls>" appears in the tree.
+            # For this reason, the reachability alternative below was added.
+            matching_choice_nodes: List[ChoiceNode] = [
                 choice_node for choice_node in choice_nodes
-                if [child.symbol for child in choice_node.children] == tree_children_symbols
-            )
+                if len(choice_node.children) == len(tree_children_symbols) and
+                   all(
+                       choice_node.children[idx].symbol == c or
+                       # choice_node has a child `choice_node_child` (e.g., "<maybe_nuls>"), which in turn has a
+                       # (choice node) child `choice_node_grandchild` (e.g., the non-epsilon production),
+                       # which has c (e.g., "<nuls>") as only alternative
+                       (choice_node_child := choice_node.children[idx],
+                        isinstance(choice_node_child, NonterminalNode) and
+                        any(
+                            isinstance(choice_node_grandchild, ChoiceNode) and
+                            len(choice_node_grandchild.children) == 1 and
+                            choice_node_grandchild.children[0].symbol == c
+                            for choice_node_grandchild in choice_node_child.children))[-1]
+                       for idx, c in enumerate(tree_children_symbols))
+            ]
+            assert len(matching_choice_nodes) == 1
+
+            choice_node: ChoiceNode = matching_choice_nodes[0]
 
         result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
 
