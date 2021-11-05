@@ -365,13 +365,12 @@ class GrammarGraph:
 
     @lru_cache(maxsize=None)
     def nonterminal_kpaths(
-            self, node: Union[NonterminalNode, str], k: int, up_to: bool = False) -> List[Tuple[Node, ...]]:
+            self, node: Union[NonterminalNode, str], k: int, up_to: bool = False) -> OrderedSet[Tuple[Node, ...]]:
         if isinstance(node, str):
             assert is_nonterminal(node)
             node = self.get_node(node)
 
-        subgraph = self.subgraph(node)
-        return [p for p in subgraph.k_paths(k, up_to=up_to) if p[0] != subgraph.root]
+        return self.k_paths(k, up_to=up_to, start_node=node)
 
     def graph_paths_from_tree(self, tree: ParseTree) -> OrderedSet[Tuple[Optional[Node], ...]]:
         node, children = tree
@@ -470,12 +469,17 @@ class GrammarGraph:
         return concrete_k_paths | potential_k_paths
 
     @lru_cache(maxsize=None)
-    def k_paths(self, k: int, up_to: bool = False) -> OrderedSet[Tuple[Node, ...]]:
+    def k_paths(self, k: int, up_to: bool = False, start_node: Optional[Node] = None) -> OrderedSet[Tuple[Node, ...]]:
         assert k > 0
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
         result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
 
-        for node in self.all_nodes:
+        if not start_node:
+            all_nodes = self.all_nodes
+        else:
+            all_nodes = [n for n, dist in self.dijkstra(start_node)[0].items() if dist < sys.maxsize]
+
+        for node in all_nodes:
             node_result: List[Tuple[Node, ...]] = [(node,)]
             for _ in range(k - 1):
                 new_node_result: List[Tuple[Node, ...]] = []

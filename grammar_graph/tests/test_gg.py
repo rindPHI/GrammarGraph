@@ -9,6 +9,7 @@ from typing import Dict
 from fuzzingbook.GrammarCoverageFuzzer import GrammarCoverageFuzzer
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal, srange
 from fuzzingbook.Parser import CSV_GRAMMAR, EarleyParser
+from orderedset import OrderedSet
 
 from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode
 
@@ -210,15 +211,13 @@ class TestGrammarGraph(unittest.TestCase):
         self.assertEqual(21, int(graph.k_path_coverage(tree, 3) * 100))  # 21% coverage
 
     def test_nonterminal_kpaths(self):
+        logging.basicConfig(level=logging.INFO)
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         for nonterminal in EXPR_GRAMMAR:
             for k in range(1, 5):
                 self.assertEqual(
-                    [p for p in graph.subgraph(nonterminal).k_paths(k) if p[0].symbol != "<start>"],
-                    graph.nonterminal_kpaths(nonterminal, k))
-                self.assertEqual(
-                    graph.nonterminal_kpaths(nonterminal, k),
-                    [p for p in graph.k_paths_in_tree((nonterminal, None), k) if p[0].symbol != "<start>"],
+                    set(graph.nonterminal_kpaths(nonterminal, k)),
+                    set(graph.k_paths_in_tree((nonterminal, None), k)),
                     f"{k}-paths differ foor nonterminal {nonterminal}"
                 )
 
