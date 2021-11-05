@@ -1,4 +1,5 @@
 import copy
+import logging
 import random
 import string
 import sys
@@ -26,16 +27,16 @@ class TestGrammarGraph(unittest.TestCase):
         graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
 
         element_node = graph.get_node("<element>")
-        self.assertTrue(element_node.reachable(element_node))
+        self.assertTrue(graph.reachable(element_node, element_node))
 
         value_node = graph.get_node("<value>")
-        self.assertTrue(value_node.reachable(value_node))
-        self.assertTrue(element_node.reachable(value_node))
+        self.assertTrue(graph.reachable(value_node, value_node))
+        self.assertTrue(graph.reachable(element_node, value_node))
 
         int_node = graph.get_node("<int>")
-        self.assertTrue(value_node.reachable(int_node))
-        self.assertTrue(element_node.reachable(int_node))
-        self.assertFalse(int_node.reachable(int_node))
+        self.assertTrue(graph.reachable(value_node, int_node))
+        self.assertTrue(graph.reachable(element_node, int_node))
+        self.assertFalse(graph.reachable(int_node, int_node))
 
     def test_parents(self):
         graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
@@ -122,7 +123,7 @@ class TestGrammarGraph(unittest.TestCase):
             v = random.choice(list(CSV_GRAMMAR.keys()))
 
             self.assertEqual(
-                graph.get_node(u).reachable(graph.get_node(v)),
+                graph.reachable(graph.get_node(u), graph.get_node(v)),
                 str_node_distances[u][v] < sys.maxsize,
                 f"Differing result for {u} and {v}"
             )
@@ -156,8 +157,51 @@ class TestGrammarGraph(unittest.TestCase):
     def test_grammar_k_paths(self):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         str_paths = [", ".join([n.symbol for n in p if not isinstance(n, ChoiceNode)]) for p in graph.k_paths(3)]
-        # print("\n".join(str_paths))
         self.assertEqual(85, len(str_paths))
+
+    def test_grammar_k_paths_up_to(self):
+        grammar = {
+            "<start>": ["<AB>", "<BA>"],
+            "<AB>": ["<A><B>"],
+            "<BA>": ["<B><A>"],
+            "<A>": ["a"],
+            "<B>": ["b"]
+        }
+        graph = GrammarGraph.from_grammar(grammar)
+        paths = graph.k_paths(4, up_to=True)
+
+        assert len(set(paths)) == len(paths)
+
+        str_paths = [", ".join([n.symbol for n in p if not isinstance(n, ChoiceNode)]) for p in paths]
+
+        self.assertEqual({
+            '<start>, <AB>, <A>, a',
+            '<start>, <BA>, <A>, a',
+            '<start>, <AB>, <B>, b',
+            '<start>, <BA>, <B>, b',
+            '<start>, <AB>, <A>',
+            '<start>, <AB>, <B>',
+            '<start>, <BA>, <A>',
+            '<start>, <BA>, <B>',
+            '<AB>, <A>, a',
+            '<AB>, <B>, b',
+            '<BA>, <A>, a',
+            '<BA>, <B>, b',
+            '<start>, <AB>',
+            '<start>, <BA>',
+            '<AB>, <A>',
+            '<AB>, <B>',
+            '<BA>, <A>',
+            '<BA>, <B>',
+            '<A>, a',
+            '<B>, b',
+            '<start>',
+            '<A>',
+            '<AB>',
+            '<B>',
+            '<BA>',
+            'a',
+            'b'}, set(str_paths))
 
     def test_k_path_coverage(self):
         parser = EarleyParser(EXPR_GRAMMAR)
@@ -174,7 +218,7 @@ class TestGrammarGraph(unittest.TestCase):
                     graph.nonterminal_kpaths(nonterminal, k))
                 self.assertEqual(
                     graph.nonterminal_kpaths(nonterminal, k),
-                    graph.k_paths_in_tree((nonterminal, None), k),
+                    [p for p in graph.k_paths_in_tree((nonterminal, None), k) if p[0].symbol != "<start>"],
                     f"{k}-paths differ foor nonterminal {nonterminal}"
                 )
 
@@ -182,14 +226,17 @@ class TestGrammarGraph(unittest.TestCase):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
 
         tree = ("<start>", [("<add_expr>", [("<mult_expr>", [("<unary_expr>", None)])])])
-        for i in range(1, 5):
-            orig_3_paths = graph.k_paths_in_tree(tree, i)
+
+        for i in range(1, 8):
+            orig_k_paths = graph.k_paths_in_tree(tree, i)
+            self.assertTrue(orig_k_paths)
+
             fuzzer = GrammarCoverageFuzzer(EXPR_GRAMMAR)
             for _ in range(100):
                 complete_tree = fuzzer.expand_tree(copy.deepcopy(tree))
-                complete_3_paths = graph.k_paths_in_tree(complete_tree, i)
-                self.assertLessEqual(len(complete_3_paths), len(orig_3_paths))
-                self.assertTrue(complete_3_paths.issubset(orig_3_paths))
+                complete_k_paths = graph.k_paths_in_tree(complete_tree, i)
+                self.assertLessEqual(len(complete_k_paths), len(orig_k_paths))
+                self.assertTrue(complete_k_paths.issubset(orig_k_paths))
 
 
 EXPR_GRAMMAR = {
