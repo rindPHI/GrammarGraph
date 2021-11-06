@@ -454,8 +454,9 @@ class GrammarGraph:
 
         for prefix in [p[-(k + 1):-1] for p in all_paths if p[-1] is None]:
             assert prefix
-            for postfix in self.nonterminal_kpaths(prefix[-1], orig_k, up_to=True):
-                # Check if the combination prefix + postfix is feasible
+            nonterminal_kpaths = self.nonterminal_kpaths(prefix[-1], orig_k, up_to=True)
+            potential_k_paths |= OrderedSet([p for p in nonterminal_kpaths if len(p) == k])
+            for postfix in [p for p in nonterminal_kpaths if p[0] == prefix[-1]]:
                 path = prefix[:-1] + postfix
                 potential_k_paths.update(OrderedSet([
                     kpath for kpath in [path[i:i + k] for i in range(0, len(path), 1)]

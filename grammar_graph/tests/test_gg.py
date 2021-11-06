@@ -9,7 +9,6 @@ from typing import Dict
 from fuzzingbook.GrammarCoverageFuzzer import GrammarCoverageFuzzer
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal, srange
 from fuzzingbook.Parser import CSV_GRAMMAR, EarleyParser
-from orderedset import OrderedSet
 
 from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode
 
@@ -143,7 +142,7 @@ class TestGrammarGraph(unittest.TestCase):
                          [node.symbol for node in graph.shortest_non_trivial_path(items, items)])
 
     def test_tinyc_shortest_path(self):
-        graph = GrammarGraph.from_grammar(TINYC_GRAMMAR)
+        graph = GrammarGraph.from_grammar(SCRIPTSIZE_C_GRAMMAR)
         source = graph.get_node("<term>")
         target = graph.get_node("<expr>")
 
@@ -159,6 +158,22 @@ class TestGrammarGraph(unittest.TestCase):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         str_paths = [", ".join([n.symbol for n in p if not isinstance(n, ChoiceNode)]) for p in graph.k_paths(3)]
         self.assertEqual(85, len(str_paths))
+
+    def test_simple_grammar_2_paths(self):
+        grammar = {
+            "<start>": ["<AB>", "<BA>"],
+            "<AB>": ["<A><B>"],
+            "<BA>": ["<B><A>"],
+            "<A>": ["a"],
+            "<B>": ["b"]
+        }
+        graph = GrammarGraph.from_grammar(grammar)
+        paths = graph.k_paths(2)
+
+        assert len(set(paths)) == len(paths)
+
+        str_paths = [", ".join([n.symbol for n in p if not isinstance(n, ChoiceNode)]) for p in paths]
+        self.assertEqual(8, len(str_paths))
 
     def test_grammar_k_paths_up_to(self):
         grammar = {
@@ -237,6 +252,12 @@ class TestGrammarGraph(unittest.TestCase):
                 self.assertLessEqual(len(complete_k_paths), len(orig_k_paths))
                 self.assertTrue(complete_k_paths.issubset(orig_k_paths))
 
+    def test_scriptsize_c_two_coverage(self):
+        tree = ("<start>", [("<statement>", [("<declaration>", None)])])
+        graph = GrammarGraph.from_grammar(SCRIPTSIZE_C_GRAMMAR)
+
+        self.assertLess(graph.k_path_coverage(tree, 2), 1)
+
 
 EXPR_GRAMMAR = {
     "<start>": ["<add_expr>"],
@@ -252,51 +273,55 @@ EXPR_GRAMMAR = {
     "<id>": ["x", "y", "z"]
 }
 
-TINYC_GRAMMAR = {
-    "<start>": ["<mwss><statement><mwss>"],
+SCRIPTSIZE_C_GRAMMAR = {
+    "<start>": ["<statement>"],
     "<statement>": [
-        "if<mwss><paren_expr><mwss><statement>",
-        "if<mwss><paren_expr><mwss><statement><mwss>else<wss><statement>",
-        "while<mwss><paren_expr><mwss><statement>",
-        "do<wss><statement>while<mwss><paren_expr><mwss>;",
-        "{<mwss><statements><mwss>}",
-        "<mwss><expr><mwss>;",
+        "<block>",
+        "<declaration>",
+        "if<paren_expr> <statement> else <statement>",
+        "if<paren_expr> <statement>",
+        "while<paren_expr> <statement>",
+        "do <statement> while<paren_expr>;",
+        "<expr>;",
         ";"
     ],
-    "<statements>": ["", "<statement>", "<statement><mwss><statements>"],
-    "<paren_expr>": ["(<mwss><expr><mwss>)"],
+    "<block>": ["{<statements>}"],
+    "<statements>": ["<statement><statements>", ""],
+    "<declaration>": [
+        "int <id> = <expr>;",
+        "int <id>;"
+    ],
+    "<paren_expr>": ["(<expr>)"],
     "<expr>": [
+        "<id> = <expr>",
         "<test>",
-        "<id><mwss>=<mwss><expr>"
     ],
     "<test>": [
+        "<sum> < <sum>",
         "<sum>",
-        "<sum><mwss><<mwss><sum>"
     ],
     "<sum>": [
+        "<sum> + <term>",
+        "<sum> - <term>",
         "<term>",
-        "<sum><mwss>+<mwss><term>",
-        "<sum><mwss>-<mwss><term>"
     ],
     "<term>": [
+        "<paren_expr>",
         "<id>",
         "<int>",
-        "<paren_expr>"
     ],
     "<id>": srange(string.ascii_lowercase),
     "<int>": [
+        "<digit_nonzero><digits>",
         "<digit>",
-        "<digit_nonzero><digits>"
     ],
     "<digits>": [
+        "<digit><int>",
         "<digit>",
-        "<digit><int>"
     ],
     "<digit>": srange(string.digits),
     "<digit_nonzero>": list(set(srange(string.digits)) - {"0"}),
-    "<mwss>": ["", "<wss>"],
-    "<wss>": ["<ws>", "<ws><wss>"],
-    "<ws>": srange(" \n\t"),
 }
+
 if __name__ == '__main__':
     unittest.main()
