@@ -89,6 +89,7 @@ class TerminalNode(Node):
 
 class GrammarGraph:
     def __init__(self, root: Node):
+        assert isinstance(root, Node)
         self.root = root
         self.__all_nodes = None
         self.__all_edges = None
@@ -380,6 +381,10 @@ class GrammarGraph:
 
         if children is None:
             return OrderedSet([(g_node, None)])
+
+        if not children:
+            # Epsilon production
+            return OrderedSet([(g_node,)])
 
         # Find suitable choice node
         choice_node = self.find_choice_node_for_children(g_node, [child[0] for child in children])

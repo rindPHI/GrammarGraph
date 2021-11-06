@@ -233,7 +233,7 @@ class TestGrammarGraph(unittest.TestCase):
                 self.assertEqual(
                     set(graph.nonterminal_kpaths(nonterminal, k)),
                     set(graph.k_paths_in_tree((nonterminal, None), k)),
-                    f"{k}-paths differ foor nonterminal {nonterminal}"
+                    f"{k}-paths differ for nonterminal {nonterminal}"
                 )
 
     def test_k_path_coverage_open_tree(self):
@@ -257,6 +257,19 @@ class TestGrammarGraph(unittest.TestCase):
         graph = GrammarGraph.from_grammar(SCRIPTSIZE_C_GRAMMAR)
 
         self.assertLess(graph.k_path_coverage(tree, 2), 1)
+
+    def test_scriptsize_g_nested_block(self):
+        graph = GrammarGraph.from_grammar(SCRIPTSIZE_C_GRAMMAR)
+        inp = "{{x;}}"
+        tree = list(EarleyParser(SCRIPTSIZE_C_GRAMMAR).parse(inp))[0]
+
+        all_paths = [path_to_string((n for n in p if not isinstance(n, ChoiceNode)))
+                     for p in graph.graph_paths_from_tree(tree)]
+
+        self.assertIn("<start> <statement> <block> <statements> <statements>", all_paths)
+
+        three_paths = [path_to_string(p) for p in graph.k_paths_in_tree(tree, 3)]
+        self.assertIn("<block> <block>-choice-1 <statements> <statements>-choice-1 <statements>", three_paths)
 
 
 EXPR_GRAMMAR = {
