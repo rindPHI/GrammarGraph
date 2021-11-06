@@ -382,40 +382,7 @@ class GrammarGraph:
             return OrderedSet([(g_node, None)])
 
         # Find suitable choice node
-        choice_nodes: List[ChoiceNode] = cast(List[ChoiceNode], g_node.children)
-
-        if not children:
-            # Epsilon transitions
-            choice_node: ChoiceNode = next(
-                choice_node for choice_node in choice_nodes
-                if len(choice_node.children) == 1 and not choice_node.children[0].symbol
-            )
-        else:
-            tree_children_symbols = [child[0] for child in children]
-
-            # Note: Sometimes, the parser seems to "skip" a nonterminal with a possible epsilon-production,
-            # as in "<maybe_nuls>: <epsilon> | <nuls>", for which only "<nuls>" appears in the tree.
-            # For this reason, the reachability alternative below was added.
-            matching_choice_nodes: List[ChoiceNode] = [
-                choice_node for choice_node in choice_nodes
-                if len(choice_node.children) == len(tree_children_symbols) and
-                   all(
-                       choice_node.children[idx].symbol == c or
-                       # choice_node has a child `choice_node_child` (e.g., "<maybe_nuls>"), which in turn has a
-                       # (choice node) child `choice_node_grandchild` (e.g., the non-epsilon production),
-                       # which has c (e.g., "<nuls>") as only alternative
-                       (choice_node_child := choice_node.children[idx],
-                        isinstance(choice_node_child, NonterminalNode) and
-                        any(
-                            isinstance(choice_node_grandchild, ChoiceNode) and
-                            len(choice_node_grandchild.children) == 1 and
-                            choice_node_grandchild.children[0].symbol == c
-                            for choice_node_grandchild in choice_node_child.children))[-1]
-                       for idx, c in enumerate(tree_children_symbols))
-            ]
-            assert len(matching_choice_nodes) == 1
-
-            choice_node: ChoiceNode = matching_choice_nodes[0]
+        choice_node = self.find_choice_node_for_children(g_node, [child[0] for child in children])
 
         result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
 
@@ -428,6 +395,42 @@ class GrammarGraph:
             result.update([(g_node, choice_node) + path for path in self.graph_paths_from_tree(child)])
 
         return result
+
+    def find_choice_node_for_children(self, parent_node: Union[str, NonterminalNode], child_symbols: List[str]):
+        if isinstance(parent_node, str):
+            parent_node = self.get_node(parent_node)
+
+        choice_nodes: List[ChoiceNode] = cast(List[ChoiceNode], parent_node.children)
+
+        if not child_symbols:
+            # Epsilon transitions
+            return next(
+                choice_node for choice_node in choice_nodes
+                if len(choice_node.children) == 1 and not choice_node.children[0].symbol
+            )
+
+        # Note: Sometimes, the parser seems to "skip" a nonterminal with a possible epsilon-production,
+        # as in "<maybe_nuls>: <epsilon> | <nuls>", for which only "<nuls>" appears in the tree.
+        # For this reason, the reachability alternative below was added.
+        matching_choice_nodes: List[ChoiceNode] = [
+            choice_node for choice_node in choice_nodes
+            if (len(choice_node.children) == len(child_symbols) and
+                all(choice_node.children[idx].symbol == c or
+                    # choice_node has a child `choice_node_child` (e.g., "<maybe_nuls>"), which in turn has a
+                    # (choice node) child `choice_node_grandchild` (e.g., the non-epsilon production),
+                    # which has c (e.g., "<nuls>") as only alternative
+                    (choice_node_child := choice_node.children[idx],
+                     isinstance(choice_node_child, NonterminalNode) and
+                     any(
+                         isinstance(choice_node_grandchild, ChoiceNode) and
+                         len(choice_node_grandchild.children) == 1 and
+                         choice_node_grandchild.children[0].symbol == c
+                         for choice_node_grandchild in choice_node_child.children))[-1]
+                    for idx, c in enumerate(child_symbols)))
+        ]
+        assert len(matching_choice_nodes) == 1
+
+        return matching_choice_nodes[0]
 
     def k_paths_in_tree(self, tree: ParseTree, k: int) -> OrderedSet[Tuple[Node, ...]]:
         assert k > 0
