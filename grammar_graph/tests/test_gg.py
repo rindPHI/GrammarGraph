@@ -14,7 +14,7 @@ from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, Te
 
 
 def path_to_string(p) -> str:
-    return " ".join([n.symbol for n in p])
+    return " ".join([f'"{n.symbol}" ({n.id})' if isinstance(n, TerminalNode) else n.symbol for n in p])
 
 
 class TestGrammarGraph(unittest.TestCase):
@@ -270,6 +270,12 @@ class TestGrammarGraph(unittest.TestCase):
 
         three_paths = [path_to_string(p) for p in graph.k_paths_in_tree(tree, 3)]
         self.assertIn("<block> <block>-choice-1 <statements> <statements>-choice-1 <statements>", three_paths)
+
+    def test_scriptsize_c_k_coverage(self):
+        graph = GrammarGraph.from_grammar(SCRIPTSIZE_C_GRAMMAR)
+        tree = ('<start>', [('<statement>', [('if', []), ('<paren_expr>', None), (' ', []), ('<statement>', None)])])
+        str_paths = [path_to_string(p) for p in graph.k_paths_in_tree(tree, 2)]
+        print("\n".join(str_paths))
 
 
 EXPR_GRAMMAR = {

@@ -327,6 +327,7 @@ class GrammarGraph:
         self.bfs(action)
         return result
 
+    @lru_cache(maxsize=None)
     def get_node(self, nonterminal: str) -> Union[None, NonterminalNode]:
         """
         This method is limited to nonterminals since for terminal nodes, there might be multiple
