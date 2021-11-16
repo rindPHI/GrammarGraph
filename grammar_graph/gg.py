@@ -162,10 +162,15 @@ class GrammarGraph:
         self.__all_edges = val
 
     @lru_cache
-    def reachable(self, from_node: Node, to_node: Node) -> bool:
+    def reachable(self, from_node: Union[str, Node], to_node: Union[str, Node]) -> bool:
         # Note: Reachability is not reflexive!
         def node_in_children(node: Node) -> bool:
             return isinstance(node, NonterminalNode) and to_node in node.children
+
+        if isinstance(from_node, str):
+            from_node = self.get_node(from_node)
+        if isinstance(to_node, str):
+            to_node = self.get_node(to_node)
 
         sources = self.filter(node_in_children, node_in_children, from_node=from_node)
         return len(sources) > 0

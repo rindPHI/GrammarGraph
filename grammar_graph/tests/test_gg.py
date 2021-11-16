@@ -223,7 +223,7 @@ class TestGrammarGraph(unittest.TestCase):
         parser = EarleyParser(EXPR_GRAMMAR)
         tree = list(parser.parse("x + 42"))[0]
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
-        self.assertEqual(21, int(graph.k_path_coverage(tree, 3) * 100))  # 21% coverage
+        self.assertEqual(22, int(graph.k_path_coverage(tree, 3) * 100))  # 21% coverage
 
     def test_nonterminal_kpaths(self):
         logging.basicConfig(level=logging.INFO)
