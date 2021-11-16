@@ -379,6 +379,13 @@ class GrammarGraph:
 
         return self.k_paths(k, up_to=up_to, start_node=node)
 
+    def tree_is_valid(self, tree: ParseTree) -> bool:
+        try:
+            self.graph_paths_from_tree(tree)
+            return True
+        except RuntimeError:
+            return False
+
     def graph_paths_from_tree(self, tree: ParseTree) -> OrderedSet[Tuple[Optional[Node], ...]]:
         node, children = tree
         assert is_nonterminal(node), "Terminal nodes are ambiguous, have to be obtained from parents"
@@ -439,7 +446,9 @@ class GrammarGraph:
                          for choice_node_grandchild in choice_node_child.children))[-1]
                     for idx, c in enumerate(child_symbols)))
         ]
-        assert len(matching_choice_nodes) == 1
+
+        if len(matching_choice_nodes) != 1:
+            raise RuntimeError(f"Child symbols {child_symbols} seem to be incorrect for parent {parent_node.symbol}")
 
         return matching_choice_nodes[0]
 
