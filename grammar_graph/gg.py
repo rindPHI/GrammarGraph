@@ -88,18 +88,30 @@ class TerminalNode(Node):
 
 
 class GrammarGraph:
-    def __init__(self, root: Node):
+    def __init__(self, root: Node, grammar: Optional[Grammar] = None):
         assert isinstance(root, Node)
         self.root = root
+        self._grammar = grammar
         self.__all_nodes = None
         self.__all_edges = None
         self.__hash = None
+
+    @property
+    def grammar(self):
+        if self._grammar is None:
+            self._grammar = self._compute_grammar()
+
+        return self._grammar
+
+    @grammar.setter
+    def grammar(self, grammar: Grammar):
+        raise NotImplementedError()
 
     def __repr__(self):
         return f"GrammarGraph({repr(self.root)})"
 
     def __eq__(self, other):
-        return isinstance(other, GrammarGraph) and self.to_grammar() == other.to_grammar()
+        return isinstance(other, GrammarGraph) and self.grammar == other.grammar
 
     def __hash__(self):
         if self.__hash is None:
@@ -271,6 +283,10 @@ class GrammarGraph:
         return dist, prev
 
     def to_grammar(self):
+        """Deprecated; use the `grammar` property."""
+        return self.grammar
+
+    def _compute_grammar(self):
         result: Grammar = {}
 
         def action(node: Node):
@@ -599,4 +615,4 @@ class GrammarGraph:
 
             return new_node
 
-        return GrammarGraph(recurse("<start>"))
+        return GrammarGraph(recurse("<start>"), grammar=grammar)
