@@ -7,7 +7,7 @@ from typing import List, Dict, Callable, Union, Optional, Tuple, cast
 
 import fibheap as fh
 from fuzzingbook.Grammars import is_nonterminal, RE_NONTERMINAL
-from fuzzingbook.fuzzingbook_utils import unicode_escape
+from fuzzingbook.bookutils import unicode_escape
 from graphviz import Digraph
 from orderedset import OrderedSet
 
