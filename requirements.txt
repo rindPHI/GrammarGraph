@@ -121,4 +121,4 @@ yapf==0.31.0
 zipp==3.6.0
 pytest==6.2.5
 pytest-pycharm==0.7.0
-z3-solver==4.8.13.0
+z3-solver>=4.8.8.0
