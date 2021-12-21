@@ -170,8 +170,6 @@ class TestGrammarGraph(unittest.TestCase):
         graph = GrammarGraph.from_grammar(grammar)
         paths = graph.k_paths(2)
 
-        assert len(set(paths)) == len(paths)
-
         str_paths = [", ".join([n.symbol for n in p if not isinstance(n, ChoiceNode)]) for p in paths]
         self.assertEqual(8, len(str_paths))
 
@@ -185,8 +183,6 @@ class TestGrammarGraph(unittest.TestCase):
         }
         graph = GrammarGraph.from_grammar(grammar)
         paths = graph.k_paths(4, up_to=True)
-
-        assert len(set(paths)) == len(paths)
 
         str_paths = [", ".join([n.symbol for n in p if not isinstance(n, ChoiceNode)]) for p in paths]
 
