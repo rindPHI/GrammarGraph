@@ -253,7 +253,7 @@ setup(
       "yapf==0.31.0",
       "z3-solver>=4.8.8.0",
       "zipp==3.6.0",
-      "proxyorderedset @ git+git://github.com/rindPHI/proxyorderedset@1a11f4289789d4fa5babe67560ad3be0e19c4790"
+      "proxyorderedset @ git+git://github.com/rindPHI/proxyorderedset@e052bab776f2988b62c600cf5c42b5246cc7fac1"
     ],  # Optional
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
