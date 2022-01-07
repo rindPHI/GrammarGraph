@@ -403,32 +403,38 @@ class GrammarGraph:
             return False
 
     def graph_paths_from_tree(self, tree: ParseTree) -> OrderedSet[Tuple[Optional[Node], ...]]:
-        node, children = tree
-        assert is_nonterminal(node), "Terminal nodes are ambiguous, have to be obtained from parents"
+        # We first compute a list, and then an ordered set with unique elements. This is
+        # *much* more performant!
 
-        g_node = self.get_node(node)
+        def helper(tree_: ParseTree) -> List[Tuple[Optional[Node], ...]]:
+            node, children = tree_
+            assert is_nonterminal(node), "Terminal nodes are ambiguous, have to be obtained from parents"
 
-        if children is None:
-            return OrderedSet([(g_node, None)])
+            g_node = self.get_node(node)
 
-        if not children:
-            # Epsilon production
-            return OrderedSet([(g_node,)])
+            if children is None:
+                return [(g_node, None)]
 
-        # Find suitable choice node
-        choice_node = self.find_choice_node_for_children(g_node, [child[0] for child in children])
+            if not children:
+                # Epsilon production
+                return [(g_node,)]
 
-        result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
+            # Find suitable choice node
+            choice_node = self.find_choice_node_for_children(g_node, [child[0] for child in children])
 
-        for child_idx, child in enumerate(children):
-            # Nonterminal children
-            if not is_nonterminal(child[0]):
-                result.add((g_node, choice_node, choice_node.children[child_idx]))
-                continue
+            result: List[Tuple[Node, ...]] = []
 
-            result.update([(g_node, choice_node) + path for path in self.graph_paths_from_tree(child)])
+            for child_idx, child in enumerate(children):
+                # Nonterminal children
+                if not is_nonterminal(child[0]):
+                    result.append((g_node, choice_node, choice_node.children[child_idx]))
+                    continue
 
-        return result
+                result.extend([(g_node, choice_node) + path for path in helper(child)])
+
+            return result
+
+        return OrderedSet(helper(tree))
 
     def find_choice_node_for_children(self, parent_node: Union[str, NonterminalNode], child_symbols: List[str]):
         if isinstance(parent_node, str):
