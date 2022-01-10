@@ -18,34 +18,16 @@ Have a look at our [feature demo](DEMO/DEMO.md)!
 
 ## Install
 
-### Globally
+GrammarGraph requires at least Python 3.9.
 
-Run `python3 setup.py install`.
+We recommend to install GrammarGraph in a virtual environment. Example usage (inside project directory):
 
-### Build & Use in Pipenv
-
-Run `python3 setup.py sdist`. Then, you can include it into another project by adding
-the following to your `Pipfile` (and running `pipenv update` afterward):
-
-```toml
-[[source]]
-# ...
-
-[packages]
-# ...
-grammargraph = {path = "path/to/GrammarGraph/dist/grammargraph-0.0.1.tar.gz"}
-
-# ...
+```shell
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+# Run tests
+python3 -m pytest -n 16
 ```
 
-### Use w/o Installation
-
-The project comes with a `Pipfile` from which you can create a pipenv environment to
-use GrammarGraph without building it. For this, run
-
-```
-pipenv install
-pipenv shell
-```
-
-Author: [Dominic Steinhoefel](mailto:dominic.steinhoefel@cispa.de)
+Author: [Dominic Steinhöfel](https://www.dominic-steinhoefel.de).
