@@ -121,4 +121,4 @@ zipp==3.6.0
 pytest==6.2.5
 pytest-pycharm==0.7.0
 z3-solver>=4.8.8.0
-proxyorderedset @ git+git://github.com/rindPHI/proxyorderedset
+proxyorderedset @ git+https://github.com/rindPHI/proxyorderedset
