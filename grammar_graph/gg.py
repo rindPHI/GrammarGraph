@@ -482,37 +482,38 @@ class GrammarGraph:
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
         all_paths = self.graph_paths_from_tree(tree)
 
-        concrete_k_paths: OrderedSet[Tuple[Node, ...]] = OrderedSet([
+        concrete_k_paths: List[Tuple[Node, ...]] = [
             kpath
             for path in all_paths
             for kpath in [path[i:i + k] for i in range(0, len(path) - k + 1, 1) if path[i + k - 1] is not None]
             if (len(kpath) == k and
                 not isinstance(kpath[0], ChoiceNode) and
                 not isinstance(kpath[-1], ChoiceNode))
-        ])
+        ]
 
         assert all(p[-1] is not None for p in concrete_k_paths)
         assert all(any(p[-1] == kpath[-1] for kpath in concrete_k_paths) for p in all_paths if p[-1] and len(p) >= k)
 
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
-        potential_k_paths: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
+        potential_k_paths: List[Tuple[Node, ...]] = []
 
         for prefix in [p[-(k + 1):-1] for p in all_paths if p[-1] is None]:
             assert prefix
             nonterminal_kpaths = self.nonterminal_kpaths(prefix[-1], orig_k, up_to=True)
-            potential_k_paths |= OrderedSet([p for p in nonterminal_kpaths if len(p) == k])
+            potential_k_paths.extend([p for p in nonterminal_kpaths if len(p) == k])
             for postfix in [p for p in nonterminal_kpaths if p[0] == prefix[-1]]:
                 path = prefix[:-1] + postfix
-                potential_k_paths.update(OrderedSet([
+                potential_k_paths.extend([
                     kpath for kpath in [path[i:i + k] for i in range(0, len(path), 1)]
                     if (len(kpath) == k and
                         not isinstance(kpath[0], ChoiceNode) and
                         not isinstance(kpath[-1], ChoiceNode))
-                ]))
+                ])
 
-        assert not potential_k_paths or potential_k_paths.intersection(self.k_paths(orig_k))
+        potential_k_paths_set = OrderedSet(potential_k_paths)
+        assert not potential_k_paths_set or potential_k_paths_set.intersection(self.k_paths(orig_k))
 
-        return concrete_k_paths | potential_k_paths
+        return OrderedSet(concrete_k_paths) | potential_k_paths_set
 
     @lru_cache(maxsize=None)
     def k_paths(self, k: int, up_to: bool = False, start_node: Optional[Node] = None) -> OrderedSet[Tuple[Node, ...]]:
