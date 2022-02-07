@@ -212,9 +212,8 @@ class GrammarGraph:
 
         return []
 
-    def shortest_path(self, source: Node, target: Node,
-                      nodes_filter: Optional[Callable[[Node], bool]] = lambda n: type(n) is NonterminalNode) \
-            -> List[Node]:
+    @lru_cache(maxsize=None)
+    def __shortest_path(self, source: Node, target: Node) -> List[Node]:
         dist, prev = self.dijkstra(source, target)
         s = []
         u = target
@@ -223,7 +222,13 @@ class GrammarGraph:
                 s = [u] + s
                 u = None if u == source else prev[u]
 
-        return s if nodes_filter is None else list([n for n in s if nodes_filter(n)])
+        return s
+
+    def shortest_path(self, source: Node, target: Node,
+                      nodes_filter: Optional[Callable[[Node], bool]] = lambda n: type(n) is NonterminalNode) \
+            -> List[Node]:
+        result = self.__shortest_path(source, target)
+        return result if nodes_filter is None else list([n for n in result if nodes_filter(n)])
 
     def shortest_distances(self, infinity: int = sys.maxsize) -> Dict[Node, Dict[Node, int]]:
         """Implementation of the Floyd-Warshall algorithm for finding shortest distances between all paths"""
