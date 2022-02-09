@@ -219,7 +219,7 @@ class TestGrammarGraph(unittest.TestCase):
         parser = EarleyParser(EXPR_GRAMMAR)
         tree = list(parser.parse("x + 42"))[0]
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
-        self.assertEqual(22, int(graph.k_path_coverage(tree, 3) * 100))  # 21% coverage
+        self.assertEqual(23, int(graph.k_path_coverage(tree, 3) * 100))  # 23% coverage
 
     def test_nonterminal_kpaths(self):
         logging.basicConfig(level=logging.INFO)
@@ -262,7 +262,7 @@ class TestGrammarGraph(unittest.TestCase):
         all_paths = [path_to_string((n for n in p if not isinstance(n, ChoiceNode)))
                      for p in graph.graph_paths_from_tree(tree)]
 
-        self.assertIn("<start> <statement> <block> <statements> <statements>", all_paths)
+        self.assertIn('<start> <statement> <block> <statements> <statements> "" (1)', all_paths)
 
         three_paths = [path_to_string(p) for p in graph.k_paths_in_tree(tree, 3)]
         self.assertIn("<block> <block>-choice-1 <statements> <statements>-choice-1 <statements>", three_paths)
@@ -272,6 +272,30 @@ class TestGrammarGraph(unittest.TestCase):
         tree = ('<start>', [('<statement>', [('if', []), ('<paren_expr>', None), (' ', []), ('<statement>', None)])])
         str_paths = [path_to_string(p) for p in graph.k_paths_in_tree(tree, 2)]
         print("\n".join(str_paths))
+
+    def test_epsilon_production_paths(self):
+        grammar = {
+            "<start>": ["<As>"],
+            "<As>": ["", "<A><As>"],
+            "<A>": ["a"]
+        }
+        graph = GrammarGraph.from_grammar(grammar)
+        inp = "aa"
+        tree = next(EarleyParser(grammar).parse(inp))
+
+        all_paths = [path_to_string(p) for p in graph.graph_paths_from_tree(tree)]
+        self.assertIn(
+            '<start> <start>-choice-1 <As> <As>-choice-2 <As> <As>-choice-2 <As> <As>-choice-1 "" (1)',
+            all_paths)
+
+        tree_paths = {path_to_string(p) for p in graph.k_paths_in_tree(tree, 1)}
+        self.assertIn('"" (1)', tree_paths)
+
+        grammar_paths = {path_to_string(p) for p in graph.k_paths(1)}
+        self.assertIn('"" (1)', tree_paths)
+
+        self.assertEqual(len(grammar_paths), len(tree_paths))
+        self.assertEqual(grammar_paths, tree_paths)
 
 
 EXPR_GRAMMAR = {

@@ -420,22 +420,18 @@ class GrammarGraph:
             if children is None:
                 return [(g_node, None)]
 
-            if not children:
-                # Epsilon production
-                return [(g_node,)]
-
             # Find suitable choice node
             choice_node = self.find_choice_node_for_children(g_node, [child[0] for child in children])
 
             result: List[Tuple[Node, ...]] = []
 
-            for child_idx, child in enumerate(children):
-                # Nonterminal children
-                if not is_nonterminal(child[0]):
-                    result.append((g_node, choice_node, choice_node.children[child_idx]))
+            for child_idx, child in enumerate(choice_node.children):
+                # Terminal children
+                if not is_nonterminal(child.symbol):
+                    result.append((g_node, choice_node, child))
                     continue
 
-                result.extend([(g_node, choice_node) + path for path in helper(child)])
+                result.extend([(g_node, choice_node) + path for path in helper(children[child_idx])])
 
             return result
 
@@ -490,7 +486,10 @@ class GrammarGraph:
         concrete_k_paths: List[Tuple[Node, ...]] = [
             kpath
             for path in all_paths
-            for kpath in [path[i:i + k] for i in range(0, len(path) - k + 1, 1) if path[i + k - 1] is not None]
+            for kpath in [
+                path[i:i + k]
+                for i in range(0, len(path) - k + 1, 1)
+                if path[i + k - 1] is not None]
             if (len(kpath) == k and
                 not isinstance(kpath[0], ChoiceNode) and
                 not isinstance(kpath[-1], ChoiceNode))
