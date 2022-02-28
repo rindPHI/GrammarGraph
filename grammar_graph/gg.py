@@ -507,12 +507,7 @@ class GrammarGraph:
             potential_k_paths.extend([p for p in nonterminal_kpaths if len(p) == k])
             for postfix in [p for p in nonterminal_kpaths if p[0] == prefix[-1]]:
                 path = prefix[:-1] + postfix
-                potential_k_paths.extend([
-                    kpath for kpath in [path[i:i + k] for i in range(0, len(path), 1)]
-                    if (len(kpath) == k and
-                        not isinstance(kpath[0], ChoiceNode) and
-                        not isinstance(kpath[-1], ChoiceNode))
-                ])
+                potential_k_paths.extend([path[i:i + k] for i in range(0, len(path) - k + 1, 2)])
 
         potential_k_paths_set = OrderedSet(potential_k_paths)
         assert not potential_k_paths_set or potential_k_paths_set.intersection(self.k_paths(orig_k))
