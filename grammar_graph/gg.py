@@ -3,13 +3,12 @@ import json
 import re
 import sys
 from functools import lru_cache
-from typing import List, Dict, Callable, Union, Optional, Tuple, cast
+from typing import List, Dict, Callable, Union, Optional, Tuple, cast, Set
 
 import fibheap as fh
 from fuzzingbook.Grammars import is_nonterminal, RE_NONTERMINAL
 from fuzzingbook.bookutils import unicode_escape
 from graphviz import Digraph
-from orderedset import OrderedSet
 
 NonterminalType = str
 Grammar = Dict[NonterminalType, List[str]]
@@ -23,9 +22,12 @@ def split_expansion(expansion: str) -> List[str]:
 class Node:
     def __init__(self, symbol: str):
         self.symbol = symbol
+        self.__hash = None
 
     def __hash__(self):
-        return hash(self.symbol)
+        if self.__hash is None:
+            self.__hash = hash(self.symbol)
+        return self.__hash
 
     def __eq__(self, other):
         return type(other) == type(self) and self.symbol == other.symbol
@@ -42,23 +44,16 @@ class Node:
 
 
 class NonterminalNode(Node):
+    # NOTE: We do not override __eq__ and __hash__, since in each grammar graph, there
+    #       should be only one nonterminal node for a given nonterminal symbol. Thus,
+    #       including children in comparisons is not necessary, so we abstain from that
+    #       for performance reasons.
     def __init__(self, symbol: str, children: List[Node]):
         super().__init__(symbol)
         self.children = children  # in fact, all children will be ChoiceNode instances.
-        self.__hash = None
 
     def __repr__(self):
         return f"NonterminalNode({self.quote_symbol()}, {repr(self.children)})"
-
-    def __hash__(self):
-        if self.__hash is None:
-            self.__hash = hash((self.symbol, tuple([child.symbol for child in self.children])))
-        return self.__hash
-
-    def __eq__(self, other):
-        return (isinstance(other, NonterminalNode) and
-                self.symbol == other.symbol and
-                [child.symbol for child in self.children] == [child.symbol for child in other.children])
 
 
 class ChoiceNode(NonterminalNode):
@@ -137,11 +132,11 @@ class GrammarGraph:
                         queue.append(child)
 
     @property
-    def all_nodes(self) -> OrderedSet[Node]:
+    def all_nodes(self) -> Set[Node]:
         if self.__all_nodes is not None:
             return self.__all_nodes
 
-        nodes: OrderedSet[Node] = OrderedSet([])
+        nodes: Set[Node] = set([])
 
         def action(node: Node):
             nonlocal nodes
@@ -152,15 +147,15 @@ class GrammarGraph:
         return nodes
 
     @all_nodes.setter
-    def all_nodes(self, val: OrderedSet[Node]) -> None:
+    def all_nodes(self, val: Set[Node]) -> None:
         self.__all_nodes = val
 
     @property
-    def all_edges(self) -> OrderedSet[Tuple[Node, Node]]:
+    def all_edges(self) -> Set[Tuple[Node, Node]]:
         if self.__all_edges is not None:
             return self.__all_edges
 
-        result = OrderedSet()
+        result = set([])
         for node in self.all_nodes:
             if not isinstance(node, NonterminalNode):
                 continue
@@ -170,7 +165,7 @@ class GrammarGraph:
         return result
 
     @all_edges.setter
-    def all_edges(self, val: OrderedSet[Tuple[Node, Node]]) -> None:
+    def all_edges(self, val: Set[Tuple[Node, Node]]) -> None:
         self.__all_edges = val
 
     @lru_cache
@@ -393,7 +388,7 @@ class GrammarGraph:
 
     @lru_cache(maxsize=None)
     def nonterminal_kpaths(
-            self, node: Union[NonterminalNode, str], k: int, up_to: bool = False) -> OrderedSet[Tuple[Node, ...]]:
+            self, node: Union[NonterminalNode, str], k: int, up_to: bool = False) -> Set[Tuple[Node, ...]]:
         if isinstance(node, str):
             assert is_nonterminal(node)
             node = self.get_node(node)
@@ -407,7 +402,7 @@ class GrammarGraph:
         except RuntimeError:
             return False
 
-    def graph_paths_from_tree(self, tree: ParseTree) -> OrderedSet[Tuple[Optional[Node], ...]]:
+    def graph_paths_from_tree(self, tree: ParseTree) -> Set[Tuple[Optional[Node], ...]]:
         # We first compute a list, and then an ordered set with unique elements. This is
         # *much* more performant!
 
@@ -435,7 +430,7 @@ class GrammarGraph:
 
             return result
 
-        return OrderedSet(helper(tree))
+        return set(helper(tree))
 
     def find_choice_node_for_children(self, parent_node: Union[str, NonterminalNode], child_symbols: List[str]):
         if isinstance(parent_node, str):
@@ -475,7 +470,7 @@ class GrammarGraph:
 
         return matching_choice_nodes[0]
 
-    def k_paths_in_tree(self, tree: ParseTree, k: int) -> OrderedSet[Tuple[Node, ...]]:
+    def k_paths_in_tree(self, tree: ParseTree, k: int) -> Set[Tuple[Node, ...]]:
         assert k > 0
         orig_k = k
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
@@ -509,16 +504,16 @@ class GrammarGraph:
                 path = prefix[:-1] + postfix
                 potential_k_paths.extend([path[i:i + k] for i in range(0, len(path) - k + 1, 2)])
 
-        potential_k_paths_set = OrderedSet(potential_k_paths)
+        potential_k_paths_set = set(potential_k_paths)
         assert not potential_k_paths_set or potential_k_paths_set.intersection(self.k_paths(orig_k))
 
-        return OrderedSet(concrete_k_paths) | potential_k_paths_set
+        return set(concrete_k_paths) | potential_k_paths_set
 
     @lru_cache(maxsize=None)
-    def k_paths(self, k: int, up_to: bool = False, start_node: Optional[Node] = None) -> OrderedSet[Tuple[Node, ...]]:
+    def k_paths(self, k: int, up_to: bool = False, start_node: Optional[Node] = None) -> set[Tuple[Node, ...]]:
         assert k > 0
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
-        result: OrderedSet[Tuple[Node, ...]] = OrderedSet([])
+        result: set[Tuple[Node, ...]] = set([])
 
         if not start_node:
             all_nodes = self.all_nodes
@@ -543,11 +538,11 @@ class GrammarGraph:
 
             result.update(node_result)
 
-        return OrderedSet([
+        return {
             kpath for kpath in result
             if ((len(kpath) <= k if up_to else len(kpath) == k) and
                 not isinstance(kpath[0], ChoiceNode) and
-                not isinstance(kpath[-1], ChoiceNode))])
+                not isinstance(kpath[-1], ChoiceNode))}
 
     def k_path_coverage(self, tree: ParseTree, k: int) -> float:
         return len(self.k_paths_in_tree(tree, k)) / len(self.k_paths(k))
