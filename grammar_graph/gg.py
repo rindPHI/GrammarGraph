@@ -440,10 +440,13 @@ class GrammarGraph:
 
         if not child_symbols:
             # Epsilon transitions
-            return next(
-                choice_node for choice_node in choice_nodes
-                if len(choice_node.children) == 1 and not choice_node.children[0].symbol
-            )
+            try:
+                return next(
+                    choice_node for choice_node in choice_nodes
+                    if len(choice_node.children) == 1 and not choice_node.children[0].symbol
+                )
+            except StopIteration:
+                raise SyntaxError(f"Could not find a choice node for epsilon transition from {parent_node.symbol}.")
 
         # Note: Sometimes, the parser seems to "skip" a nonterminal with a possible epsilon-production,
         # as in "<maybe_nuls>: <epsilon> | <nuls>", for which only "<nuls>" appears in the tree.
