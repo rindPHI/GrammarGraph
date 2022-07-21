@@ -6,17 +6,32 @@ from functools import lru_cache
 from typing import List, Dict, Callable, Union, Optional, Tuple, cast, Set
 
 import fibheap as fh
-from fuzzingbook.Grammars import is_nonterminal, RE_NONTERMINAL
-from fuzzingbook.bookutils import unicode_escape
 from graphviz import Digraph
 
 NonterminalType = str
 Grammar = Dict[NonterminalType, List[str]]
 ParseTree = Tuple[str, Optional[List['ParseTree']]]
 
+RE_NONTERMINAL = re.compile(r'(<[^<> ]*>)')
+
+
+@lru_cache(maxsize=None)
+def is_nonterminal(s):
+    return RE_NONTERMINAL.match(s)
+
 
 def split_expansion(expansion: str) -> List[str]:
     return [token for token in re.split(RE_NONTERMINAL, expansion) if token]
+
+
+def unicode_escape(s: str, error: str = 'backslashreplace') -> str:
+    def ascii_chr(byte: int) -> str:
+        if 0 <= byte <= 127:
+            return chr(byte)
+        return r"\x%02x" % byte
+
+    bytes_ = s.encode('utf-8', error)
+    return "".join(map(ascii_chr, bytes_))
 
 
 class Node:

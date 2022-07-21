@@ -1,0 +1,6 @@
+fibheap>=0.2.1
+fuzzingbook>=1.1
+pytest-pycharm>=0.7.0
+pytest-xdist==2.5.0
+pytest>=6.2.5
+wheel>=0.37.1

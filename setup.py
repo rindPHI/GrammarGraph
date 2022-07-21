@@ -133,10 +133,6 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         "fibheap>=0.2.1",
-        "fuzzingbook>=1.1",
-        "pytest-pycharm>=0.7.0",
-        "pytest-xdist==2.5.0",
-        "pytest>=6.2.5",
         "wheel>=0.37.1"
     ],  # Optional
     # List additional groups of dependencies here (e.g. development
@@ -147,7 +143,12 @@ setup(
     #
     # Similar to `install_requires` above, these must be valid existing
     # projects.
-    extras_require={"dev": []},  # Optional
+    extras_require={"test": [
+        "fuzzingbook>=1.1",
+        "pytest-pycharm>=0.7.0",
+        "pytest-xdist==2.5.0",
+        "pytest>=6.2.5",
+    ]},  # Optional
     # If there are data files included in your packages that need to be
     # installed, specify them here.
     #
