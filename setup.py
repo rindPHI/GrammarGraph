@@ -133,6 +133,7 @@ setup(
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
         "fibheap>=0.2.1",
+        "graphviz>=0.20",
         "wheel>=0.37.1"
     ],  # Optional
     # List additional groups of dependencies here (e.g. development
