@@ -54,7 +54,7 @@ fits on the screen, we reduce the number of alternatives for the `<letter>` nont
 ```python
 CSV_GRAMMAR["<letter>"] = ['a', 'b', 'c', '1', '2', '3']
 
-from src.grammar_graph import GrammarGraph
+from grammar_graph import GrammarGraph
 
 graph = GrammarGraph.from_grammar(CSV_GRAMMAR)
 graph.to_dot()
