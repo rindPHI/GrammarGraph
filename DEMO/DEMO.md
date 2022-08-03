@@ -51,11 +51,10 @@ for _ in range(10):
 Using GrammarGraph, we can visualize this grammar based on GraphViz. To make sure everything
 fits on the screen, we reduce the number of alternatives for the `<letter>` nonterminal.
 
-
 ```python
 CSV_GRAMMAR["<letter>"] = ['a', 'b', 'c', '1', '2', '3']
 
-from grammar_graph.gg import GrammarGraph
+from src.grammar_graph import GrammarGraph
 
 graph = GrammarGraph.from_grammar(CSV_GRAMMAR)
 graph.to_dot()
