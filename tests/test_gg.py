@@ -13,8 +13,12 @@ from fuzzingbook.Parser import CSV_GRAMMAR, EarleyParser
 from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode
 
 
-def path_to_string(p) -> str:
-    return " ".join([f'"{n.symbol}" ({n.id})' if isinstance(n, TerminalNode) else n.symbol for n in p])
+def path_to_string(p, include_choice_node=True) -> str:
+    return " ".join([
+        f'"{n.symbol}" ({n.id})' if isinstance(n, TerminalNode)
+        else n.symbol
+        for n in p
+        if include_choice_node or not isinstance(n, ChoiceNode)])
 
 
 class TestGrammarGraph(unittest.TestCase):
@@ -159,6 +163,12 @@ class TestGrammarGraph(unittest.TestCase):
         str_paths = [", ".join([n.symbol for n in p if not isinstance(n, ChoiceNode)]) for p in graph.k_paths(3)]
         self.assertEqual(85, len(str_paths))
 
+    def test_grammar_nonterminal_k_paths(self):
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
+        str_paths = list(map(lambda p: path_to_string(p, False), graph.k_paths(2, include_terminals=False)))
+        self.assertIn('<mult_expr> <mult_expr>', str_paths)
+        self.assertEqual(17, len(str_paths))
+
     def test_simple_grammar_2_paths(self):
         grammar = {
             "<start>": ["<AB>", "<BA>"],
@@ -232,12 +242,20 @@ class TestGrammarGraph(unittest.TestCase):
                     f"{k}-paths differ for nonterminal {nonterminal}"
                 )
 
-    def test_k_paths(self):
+    def test_k_paths_in_tree(self):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         tree = ("<start>", [("<add_expr>", [("<mult_expr>", [("<unary_expr>", None)])])])
+
         concrete_paths = graph.k_paths_in_tree(tree, 3, include_potential_paths=False)
         self.assertEqual(2, len(concrete_paths))
-        potential_paths = graph.k_paths_in_tree(tree, 3, include_potential_paths=True)
+
+        nonterminal_ending_paths = graph.k_paths_in_tree(tree, 3, include_terminals=False)
+        nonterminal_ending_string_paths = list(map(lambda p: path_to_string(p, False), nonterminal_ending_paths))
+        self.assertIn('<mult_expr> <mult_expr> <unary_expr>', nonterminal_ending_string_paths)
+        self.assertIn('<mult_expr> <unary_expr> <dec_digits>', nonterminal_ending_string_paths)
+        self.assertEqual(41, len(nonterminal_ending_paths))
+
+        potential_paths = graph.k_paths_in_tree(tree, 3)
         self.assertEqual(80, len(potential_paths))
 
     def test_k_path_coverage_open_tree(self):

@@ -403,12 +403,16 @@ class GrammarGraph:
 
     @lru_cache(maxsize=None)
     def nonterminal_kpaths(
-            self, node: Union[NonterminalNode, str], k: int, up_to: bool = False) -> Set[Tuple[Node, ...]]:
+            self,
+            node: Union[NonterminalNode, str],
+            k: int,
+            up_to: bool = False,
+            include_terminals=True) -> Set[Tuple[Node, ...]]:
         if isinstance(node, str):
             assert is_nonterminal(node)
             node = self.get_node(node)
 
-        return self.k_paths(k, up_to=up_to, start_node=node)
+        return self.k_paths(k, up_to=up_to, start_node=node, include_terminals=include_terminals)
 
     def tree_is_valid(self, tree: ParseTree) -> bool:
         try:
@@ -417,7 +421,7 @@ class GrammarGraph:
         except RuntimeError:
             return False
 
-    def graph_paths_from_tree(self, tree: ParseTree) -> Set[Tuple[Optional[Node], ...]]:
+    def graph_paths_from_tree(self, tree: ParseTree, include_terminals=True) -> Set[Tuple[Optional[Node], ...]]:
         # We first compute a list, and then an ordered set with unique elements. This is
         # *much* more performant!
 
@@ -438,6 +442,8 @@ class GrammarGraph:
             for child_idx, child in enumerate(choice_node.children):
                 # Terminal children
                 if not is_nonterminal(child.symbol):
+                    if not include_terminals:
+                        continue
                     result.append((g_node, choice_node, child))
                     continue
 
@@ -488,7 +494,12 @@ class GrammarGraph:
 
         return matching_choice_nodes[0]
 
-    def k_paths_in_tree(self, tree: ParseTree, k: int, include_potential_paths=False) -> Set[Tuple[Node, ...]]:
+    def k_paths_in_tree(
+            self,
+            tree: ParseTree,
+            k: int,
+            include_potential_paths=True,
+            include_terminals=True) -> Set[Tuple[Node, ...]]:
         """
         Computes the k-paths in the given derivation tree.
 
@@ -496,6 +507,7 @@ class GrammarGraph:
         :param k: The length parameter for the k-paths.
         :param include_potential_paths: Potential paths starting from "open leaves" `(<nonterminal, None)` in
         the tree are included iff this parameter is `True`.
+        :param include_terminals: All k-paths ending in a terminal symbol are included iff this parameter is `True`.
         :return: The k-paths in the given tree.
         """
         assert k > 0
@@ -503,7 +515,7 @@ class GrammarGraph:
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
 
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
-        all_paths = self.graph_paths_from_tree(tree)
+        all_paths = self.graph_paths_from_tree(tree, include_terminals=include_terminals)
 
         concrete_k_paths: List[Tuple[Node, ...]] = [
             kpath
@@ -528,7 +540,9 @@ class GrammarGraph:
 
         for prefix in [p[-(k + 1):-1] for p in all_paths if p[-1] is None]:
             assert prefix
-            nonterminal_kpaths = self.nonterminal_kpaths(prefix[-1], orig_k, up_to=True)
+            assert isinstance(prefix[-1], NonterminalNode)
+            nonterminal_kpaths = self.nonterminal_kpaths(
+                cast(NonterminalNode, prefix[-1]), orig_k, up_to=True, include_terminals=include_terminals)
             potential_k_paths.extend([p for p in nonterminal_kpaths if len(p) == k])
             for postfix in [p for p in nonterminal_kpaths if p[0] == prefix[-1]]:
                 path = prefix[:-1] + postfix
@@ -540,7 +554,12 @@ class GrammarGraph:
         return set(concrete_k_paths) | potential_k_paths_set
 
     @lru_cache(maxsize=None)
-    def k_paths(self, k: int, up_to: bool = False, start_node: Optional[Node] = None) -> set[Tuple[Node, ...]]:
+    def k_paths(
+            self,
+            k: int,
+            up_to: bool = False,
+            start_node: Optional[Node] = None,
+            include_terminals=True) -> set[Tuple[Node, ...]]:
         assert k > 0
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
         result: set[Tuple[Node, ...]] = set([])
@@ -572,7 +591,8 @@ class GrammarGraph:
             kpath for kpath in result
             if ((len(kpath) <= k if up_to else len(kpath) == k) and
                 not isinstance(kpath[0], ChoiceNode) and
-                not isinstance(kpath[-1], ChoiceNode))}
+                not isinstance(kpath[-1], ChoiceNode) and
+                (include_terminals or not isinstance(kpath[-1], TerminalNode)))}
 
     def k_path_coverage(self, tree: ParseTree, k: int) -> float:
         return len(self.k_paths_in_tree(tree, k)) / len(self.k_paths(k))
