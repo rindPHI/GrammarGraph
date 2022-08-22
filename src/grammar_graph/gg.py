@@ -562,7 +562,7 @@ class GrammarGraph:
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
         potential_k_paths: List[Tuple[Node, ...]] = []
 
-        for prefix in [p[-(k + 1):] for p in all_paths if type(p[-1]) is NonterminalNode]:
+        for prefix in [p[-k:] for p in all_paths if type(p[-1]) is NonterminalNode]:
             assert prefix
             assert isinstance(prefix[-1], NonterminalNode)
             nonterminal_kpaths = self.nonterminal_kpaths(

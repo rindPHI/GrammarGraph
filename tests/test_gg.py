@@ -372,13 +372,21 @@ class TestGrammarGraph(unittest.TestCase):
 
         nonterminal_ending_paths = graph.k_paths_in_tree(tree, 3, include_terminals=False)
         nonterminal_ending_string_paths = list(map(lambda p: path_to_string(p, False), nonterminal_ending_paths))
+
         self.assertIn('<mult_expr> <mult_expr> <unary_expr>', nonterminal_ending_string_paths)
         self.assertIn('<mult_expr> <unary_expr> <dec_digits>', nonterminal_ending_string_paths)
         self.assertNotIn('<mult_expr> <unary_expr> ")" (1)', nonterminal_ending_string_paths)
-        self.assertEqual(53, len(nonterminal_ending_paths))
+
+        self.assertEqual(41, len(nonterminal_ending_paths))
+
+        self.assertTrue(all(type(path[0]) is NonterminalNode for path in nonterminal_ending_paths))
+        self.assertTrue(all(type(path[-1]) is NonterminalNode for path in nonterminal_ending_paths))
 
         potential_paths = graph.k_paths_in_tree(tree, 3)
-        self.assertEqual(99, len(potential_paths))
+        self.assertEqual(80, len(potential_paths))
+
+        self.assertTrue(all(type(path[0]) is NonterminalNode for path in potential_paths))
+        self.assertTrue(all(type(path[-1]) is not ChoiceNode for path in potential_paths))
 
     def test_k_paths_in_tree_with_terminals(self):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
@@ -404,6 +412,34 @@ class TestGrammarGraph(unittest.TestCase):
                 complete_k_paths = graph.k_paths_in_tree(complete_tree, i)
                 self.assertLessEqual(len(complete_k_paths), len(orig_k_paths))
                 self.assertTrue(complete_k_paths.issubset(orig_k_paths))
+
+    def test_potential_paths_without_terminals(self):
+        lang_grammar = {
+            "<start>":
+                ["<stmt>"],
+            "<stmt>":
+                ["<assgn> ; <stmt>", "<assgn>"],
+            "<assgn>":
+                ["<var> := <rhs>"],
+            "<rhs>":
+                ["<var>", "<digit>"],
+            "<var>": list(string.ascii_lowercase),
+            "<digit>": list(string.digits)
+        }
+        graph = GrammarGraph.from_grammar(lang_grammar)
+
+        tree = ('<start>', [('<stmt>', [('<assgn>', [('<var>', None), (' := ', []), ('<rhs>', None)])])])
+
+        paths = graph.k_paths_in_tree(tree, 3, include_potential_paths=True, include_terminals=False)
+
+        expected = {
+            '<start> <stmt> <assgn>',
+            '<stmt> <assgn> <rhs>',
+            '<assgn> <rhs> <var>',
+            '<assgn> <rhs> <digit>',
+            '<stmt> <assgn> <var>'}
+
+        self.assertEqual(expected, set(map(path_to_string_no_choice, paths)))
 
     def test_scriptsize_c_two_coverage(self):
         tree = ("<start>", [("<statement>", [("<declaration>", None)])])
