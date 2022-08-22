@@ -442,7 +442,7 @@ class GrammarGraph:
             g_node = self.get_node(node)
 
             if children is None:
-                return [(g_node, None)]
+                return [(g_node,)]
 
             # Find suitable choice node
             choice_node = self.find_choice_node_for_children(g_node, [child[0] for child in children])
@@ -465,7 +465,8 @@ class GrammarGraph:
 
         cleaned_result = []
         for path in sorted(result, key=lambda p: -len(p)):
-            path = path[:-2]
+            if isinstance(path[-1], TerminalNode):
+                path = path[:-2]
             if not path or any(
                     len(other_path) > len(path) and
                     other_path[:len(path)] == path
@@ -561,7 +562,7 @@ class GrammarGraph:
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
         potential_k_paths: List[Tuple[Node, ...]] = []
 
-        for prefix in [p[-(k + 1):-1] for p in all_paths if p[-1] is None]:
+        for prefix in [p[-(k + 1):] for p in all_paths if type(p[-1]) is NonterminalNode]:
             assert prefix
             assert isinstance(prefix[-1], NonterminalNode)
             nonterminal_kpaths = self.nonterminal_kpaths(
