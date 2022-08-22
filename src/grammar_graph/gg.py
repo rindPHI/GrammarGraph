@@ -2,17 +2,27 @@ import html
 import json
 import re
 import sys
+from abc import abstractmethod
 from functools import lru_cache
-from typing import List, Dict, Callable, Union, Optional, Tuple, cast, Set
+from typing import List, Dict, Callable, Union, Optional, Tuple, cast, Set, Protocol, Generator, Iterator
 
 import fibheap as fh
 from graphviz import Digraph
 
 NonterminalType = str
 Grammar = Dict[NonterminalType, List[str]]
-ParseTree = Tuple[str, Optional[List['ParseTree']]]
 
 RE_NONTERMINAL = re.compile(r'(<[^<> ]*>)')
+
+
+class ParseTree(Protocol):
+    @abstractmethod
+    def __iter__(self) -> Iterator[str | List['ParseTree'] | None]:
+        raise NotImplementedError()
+
+    @abstractmethod
+    def __getitem__(self, item: int) -> str | List['ParseTree'] | None:
+        raise NotImplementedError()
 
 
 @lru_cache(maxsize=None)
