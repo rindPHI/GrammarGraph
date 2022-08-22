@@ -466,7 +466,10 @@ class GrammarGraph:
         cleaned_result = []
         for path in sorted(result, key=lambda p: -len(p)):
             path = path[:-2]
-            if any(len(other_path) > len(path) and other_path[:len(path)] == path for other_path in cleaned_result):
+            if not path or any(
+                    len(other_path) > len(path) and
+                    other_path[:len(path)] == path
+                    for other_path in cleaned_result):
                 continue
 
             cleaned_result.append(path)

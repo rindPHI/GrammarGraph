@@ -234,6 +234,11 @@ class TestGrammarGraph(unittest.TestCase):
             '<mult_expr> <unary_expr> <id>',
         }, str_results)
 
+    def test_graph_paths_empty(self):
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
+        tree = ('<start>', None)
+        self.assertFalse(graph.graph_paths_from_tree(tree, include_terminals=False))
+
     def test_grammar_nonterminal_k_paths(self):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         str_paths = list(map(lambda p: path_to_string(p, False), graph.k_paths(2, include_terminals=False)))
