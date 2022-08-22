@@ -21,6 +21,10 @@ def path_to_string(p, include_choice_node=True) -> str:
         if include_choice_node or not isinstance(n, ChoiceNode)])
 
 
+def path_to_string_no_choice(p) -> str:
+    return path_to_string(p, False)
+
+
 class TestGrammarGraph(unittest.TestCase):
 
     # def test_todot(self):
@@ -162,6 +166,73 @@ class TestGrammarGraph(unittest.TestCase):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         str_paths = [", ".join([n.symbol for n in p if not isinstance(n, ChoiceNode)]) for p in graph.k_paths(3)]
         self.assertEqual(85, len(str_paths))
+
+    def test_graph_paths_from_tree_no_terminals(self):
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
+        # x + y * z
+        tree = (
+            '<start>', [
+                ('<add_expr>', [
+                    ('<add_expr>', [
+                        ('<mult_expr>', [('<unary_expr>', [('<id>', [('x', [])])])])
+                    ]),
+                    (' ', []),
+                    ('<add_symbol>', [('+', [])]),
+                    (' ', []),
+                    ('<mult_expr>', [
+                        ('<mult_expr>', [('<unary_expr>', [('<id>', [('x', [])])])]),
+                        (' ', []),
+                        ('<mult_symbol>', [('*', [])]),
+                        (' ', []),
+                        ('<unary_expr>', [('<id>', [('z', [])])]),
+                    ])])])
+
+        str_results = set(map(path_to_string_no_choice, graph.graph_paths_from_tree(tree, include_terminals=False)))
+
+        self.assertEqual({
+            '<start> <add_expr> <add_symbol>',
+            '<start> <add_expr> <mult_expr> <unary_expr> <id>',
+            '<start> <add_expr> <mult_expr> <mult_symbol>',
+            '<start> <add_expr> <add_expr> <mult_expr> <unary_expr> <id>',
+            '<start> <add_expr> <mult_expr> <mult_expr> <unary_expr> <id>'
+        }, str_results)
+
+    def test_graph_k_paths_from_tree_no_terminals(self):
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
+        # x + y * z
+        tree = (
+            '<start>', [
+                ('<add_expr>', [
+                    ('<add_expr>', [
+                        ('<mult_expr>', [('<unary_expr>', [('<id>', [('x', [])])])])
+                    ]),
+                    (' ', []),
+                    ('<add_symbol>', [('+', [])]),
+                    (' ', []),
+                    ('<mult_expr>', [
+                        ('<mult_expr>', [('<unary_expr>', [('<id>', [('x', [])])])]),
+                        (' ', []),
+                        ('<mult_symbol>', [('*', [])]),
+                        (' ', []),
+                        ('<unary_expr>', [('<id>', [('z', [])])]),
+                    ])])])
+
+        str_results = set(map(path_to_string_no_choice, graph.k_paths_in_tree(tree, 3, include_terminals=False)))
+
+        self.assertEqual({
+            '<start> <add_expr> <add_symbol>',
+            '<start> <add_expr> <mult_expr>',
+            '<start> <add_expr> <mult_expr>',
+            '<start> <add_expr> <add_expr>',
+            '<start> <add_expr> <mult_expr>',
+            '<add_expr> <add_expr> <mult_expr>',
+            '<add_expr> <mult_expr> <unary_expr>',
+            '<add_expr> <mult_expr> <mult_expr>',
+            '<add_expr> <mult_expr> <mult_symbol>',
+            '<add_expr> <mult_expr> <unary_expr>',
+            '<mult_expr> <mult_expr> <unary_expr>',
+            '<mult_expr> <unary_expr> <id>',
+        }, str_results)
 
     def test_grammar_nonterminal_k_paths(self):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)

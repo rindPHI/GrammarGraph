@@ -452,8 +452,6 @@ class GrammarGraph:
             for child_idx, child in enumerate(choice_node.children):
                 # Terminal children
                 if not is_nonterminal(child.symbol):
-                    if not include_terminals:
-                        continue
                     result.append((g_node, choice_node, child))
                     continue
 
@@ -461,7 +459,19 @@ class GrammarGraph:
 
             return result
 
-        return set(helper(tree))
+        result = helper(tree)
+        if include_terminals:
+            return set(result)
+
+        cleaned_result = []
+        for path in sorted(result, key=lambda p: -len(p)):
+            path = path[:-2]
+            if any(len(other_path) > len(path) and other_path[:len(path)] == path for other_path in cleaned_result):
+                continue
+
+            cleaned_result.append(path)
+
+        return set(cleaned_result)
 
     def find_choice_node_for_children(self, parent_node: Union[str, NonterminalNode], child_symbols: List[str]):
         if isinstance(parent_node, str):
