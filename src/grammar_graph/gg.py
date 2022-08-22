@@ -488,7 +488,16 @@ class GrammarGraph:
 
         return matching_choice_nodes[0]
 
-    def k_paths_in_tree(self, tree: ParseTree, k: int) -> Set[Tuple[Node, ...]]:
+    def k_paths_in_tree(self, tree: ParseTree, k: int, include_potential_paths=False) -> Set[Tuple[Node, ...]]:
+        """
+        Computes the k-paths in the given derivation tree.
+
+        :param tree: The derivation tree to compute k-paths for
+        :param k: The length parameter for the k-paths.
+        :param include_potential_paths: Potential paths starting from "open leaves" `(<nonterminal, None)` in
+        the tree are included iff this parameter is `True`.
+        :return: The k-paths in the given tree.
+        """
         assert k > 0
         orig_k = k
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
@@ -510,6 +519,9 @@ class GrammarGraph:
 
         assert all(p[-1] is not None for p in concrete_k_paths)
         assert all(any(p[-1] == kpath[-1] for kpath in concrete_k_paths) for p in all_paths if p[-1] and len(p) >= k)
+
+        if not include_potential_paths:
+            return concrete_k_paths
 
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
         potential_k_paths: List[Tuple[Node, ...]] = []

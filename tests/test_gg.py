@@ -232,6 +232,14 @@ class TestGrammarGraph(unittest.TestCase):
                     f"{k}-paths differ for nonterminal {nonterminal}"
                 )
 
+    def test_k_paths(self):
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
+        tree = ("<start>", [("<add_expr>", [("<mult_expr>", [("<unary_expr>", None)])])])
+        concrete_paths = graph.k_paths_in_tree(tree, 3, include_potential_paths=False)
+        self.assertEqual(2, len(concrete_paths))
+        potential_paths = graph.k_paths_in_tree(tree, 3, include_potential_paths=True)
+        self.assertEqual(80, len(potential_paths))
+
     def test_k_path_coverage_open_tree(self):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
 
