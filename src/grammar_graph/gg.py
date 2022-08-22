@@ -521,7 +521,7 @@ class GrammarGraph:
         assert all(any(p[-1] == kpath[-1] for kpath in concrete_k_paths) for p in all_paths if p[-1] and len(p) >= k)
 
         if not include_potential_paths:
-            return concrete_k_paths
+            return set(concrete_k_paths)
 
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
         potential_k_paths: List[Tuple[Node, ...]] = []
