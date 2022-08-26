@@ -1,3 +1,4 @@
+import functools
 import html
 import json
 import re
@@ -539,22 +540,31 @@ class GrammarGraph:
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
 
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
-        all_paths = self.graph_paths_from_tree(tree, include_terminals=include_terminals)
+        all_paths = self.graph_paths_from_tree(tree, include_terminals=True)
+
+        @functools.lru_cache
+        def remove_terminals(path: Tuple[Node, ...]) -> Tuple[Node, ...]:
+            if include_terminals or not isinstance(path[-1], TerminalNode):
+                return path
+            else:
+                return path[:-2]
 
         concrete_k_paths: List[Tuple[Node, ...]] = [
             kpath
             for path in all_paths
             for kpath in [
-                path[i:i + k]
-                for i in range(0, len(path) - k + 1, 1)
-                if path[i + k - 1] is not None]
+                remove_terminals(path)[i:i + k]
+                for i in range(0, len(remove_terminals(path)) - k + 1, 1)
+                if remove_terminals(path)[i + k - 1] is not None]
             if (len(kpath) == k and
                 not isinstance(kpath[0], ChoiceNode) and
                 not isinstance(kpath[-1], ChoiceNode))
         ]
 
         assert all(p[-1] is not None for p in concrete_k_paths)
-        assert all(any(p[-1] == kpath[-1] for kpath in concrete_k_paths) for p in all_paths if p[-1] and len(p) >= k)
+        assert all(
+            any(remove_terminals(p)[-1] == kpath[-1] for kpath in concrete_k_paths)
+            for p in all_paths if len(remove_terminals(p)) >= k)
 
         if not include_potential_paths:
             return set(concrete_k_paths)
@@ -572,7 +582,10 @@ class GrammarGraph:
                 path = prefix[:-1] + postfix
                 potential_k_paths.extend([path[i:i + k] for i in range(0, len(path) - k + 1, 2)])
 
-        potential_k_paths_set = set(potential_k_paths)
+        potential_k_paths_set = {
+            path if include_terminals or not isinstance(path[-1], TerminalNode)
+            else path[:-2]
+            for path in potential_k_paths}
         assert not potential_k_paths_set or potential_k_paths_set.intersection(self.k_paths(orig_k))
 
         return set(concrete_k_paths) | potential_k_paths_set

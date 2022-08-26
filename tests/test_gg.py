@@ -482,6 +482,19 @@ class TestGrammarGraph(unittest.TestCase):
         self.assertEqual(len(grammar_paths), len(tree_paths))
         self.assertEqual(grammar_paths, tree_paths)
 
+    def test_graph_k_paths_from_tree_no_terminals_2(self):
+        grammar = {
+            "<start>": ["<expr>"],
+            "<expr>": [
+                "<id> = <id>;",
+                "nop"
+            ],
+            "<id>": srange(string.ascii_lowercase),
+        }
+        tree = ('<start>', [('<expr>', [('nop', ())])])
+        graph = GrammarGraph.from_grammar(grammar)
+        self.assertFalse(graph.k_paths_in_tree(tree, 3, include_terminals=False))
+
 
 EXPR_GRAMMAR = {
     "<start>": ["<add_expr>"],
