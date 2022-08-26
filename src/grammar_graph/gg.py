@@ -3,27 +3,19 @@ import html
 import json
 import re
 import sys
-from abc import abstractmethod
 from functools import lru_cache
-from typing import List, Dict, Callable, Union, Optional, Tuple, cast, Set, Protocol, Generator, Iterator
+from typing import List, Dict, Callable, Union, Optional, Tuple, cast, Set
 
 import fibheap as fh
 from graphviz import Digraph
+
+from grammar_graph.helpers import traverse_tree, TRAVERSE_POSTORDER
+from grammar_graph.type_defs import ParseTree
 
 NonterminalType = str
 Grammar = Dict[NonterminalType, List[str]]
 
 RE_NONTERMINAL = re.compile(r'(<[^<> ]*>)')
-
-
-class ParseTree(Protocol):
-    @abstractmethod
-    def __iter__(self) -> Iterator[str | List['ParseTree'] | None]:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def __getitem__(self, item: int) -> str | List['ParseTree'] | None:
-        raise NotImplementedError()
 
 
 @lru_cache(maxsize=None)
@@ -435,15 +427,18 @@ class GrammarGraph:
     def graph_paths_from_tree(self, tree: ParseTree, include_terminals=True) -> Set[Tuple[Optional[Node], ...]]:
         # We first compute a list, and then an ordered set with unique elements. This is
         # *much* more performant!
+        stack: List[List[Tuple[Node, ...]]] = []
 
-        def helper(tree_: ParseTree) -> List[Tuple[Optional[Node], ...]]:
-            node, children = tree_
-            assert is_nonterminal(node), "Terminal nodes are ambiguous, have to be obtained from parents"
+        def action(_, subtree: ParseTree):
+            node, children = subtree
+            if not is_nonterminal(node):
+                return
 
             g_node = self.get_node(node)
 
             if children is None:
-                return [(g_node,)]
+                stack.append([(g_node,)])
+                return
 
             # Find suitable choice node
             choice_node = self.find_choice_node_for_children(g_node, [child[0] for child in children])
@@ -456,11 +451,15 @@ class GrammarGraph:
                     result.append((g_node, choice_node, child))
                     continue
 
-                result.extend([(g_node, choice_node) + path for path in helper(children[child_idx])])
+                result.extend([(g_node, choice_node) + path for path in stack.pop()])
 
-            return result
+            stack.append(result)
 
-        result = helper(tree)
+        traverse_tree(tree, action, kind=TRAVERSE_POSTORDER, reverse=True)
+
+        assert len(stack) == 1
+        result = stack[0]
+
         if include_terminals:
             return set(result)
 

@@ -189,6 +189,40 @@ class TestGrammarGraph(unittest.TestCase):
             '<start> <add_expr> <mult_expr> <mult_expr> <unary_expr> <id>'
         }, str_results)
 
+    def test_graph_paths_from_tree_with_terminals(self):
+        graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
+        # x + y * z
+        tree = (
+            '<start>', [
+                ('<add_expr>', [
+                    ('<add_expr>', [
+                        ('<mult_expr>', [('<unary_expr>', [('<id>', [('x', [])])])])
+                    ]),
+                    (' ', []),
+                    ('<add_symbol>', [('+', [])]),
+                    (' ', []),
+                    ('<mult_expr>', [
+                        ('<mult_expr>', [('<unary_expr>', [('<id>', [('x', [])])])]),
+                        (' ', []),
+                        ('<mult_symbol>', [('*', [])]),
+                        (' ', []),
+                        ('<unary_expr>', [('<id>', [('z', [])])]),
+                    ])])])
+
+        str_results = set(map(path_to_string_no_choice, graph.graph_paths_from_tree(tree, include_terminals=True)))
+
+        self.assertEqual({
+            '<start> <add_expr> " " (3)',
+            '<start> <add_expr> " " (4)',
+            '<start> <add_expr> <add_expr> <mult_expr> <unary_expr> <id> "x" (1)',
+            '<start> <add_expr> <add_symbol> "+" (2)',
+            '<start> <add_expr> <mult_expr> " " (1)',
+            '<start> <add_expr> <mult_expr> " " (2)',
+            '<start> <add_expr> <mult_expr> <mult_expr> <unary_expr> <id> "x" (1)',
+            '<start> <add_expr> <mult_expr> <mult_symbol> "*" (1)',
+            '<start> <add_expr> <mult_expr> <unary_expr> <id> "z" (1)'
+        }, str_results)
+
     def test_graph_k_paths_from_tree_no_terminals(self):
         graph = GrammarGraph.from_grammar(EXPR_GRAMMAR)
         # x + y * z
