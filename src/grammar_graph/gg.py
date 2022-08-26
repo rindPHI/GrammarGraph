@@ -691,3 +691,11 @@ class GrammarGraph:
             return new_node
 
         return GrammarGraph(recurse("<start>"), grammar=grammar)
+
+
+def path_to_string(p, include_choice_node=True) -> str:
+    return " ".join([
+        f'"{n.symbol}" ({n.id})' if isinstance(n, TerminalNode)
+        else n.symbol
+        for n in p
+        if include_choice_node or not isinstance(n, ChoiceNode)])

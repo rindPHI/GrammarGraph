@@ -10,15 +10,7 @@ from fuzzingbook.GrammarCoverageFuzzer import GrammarCoverageFuzzer
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal, srange
 from fuzzingbook.Parser import CSV_GRAMMAR, EarleyParser
 
-from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode
-
-
-def path_to_string(p, include_choice_node=True) -> str:
-    return " ".join([
-        f'"{n.symbol}" ({n.id})' if isinstance(n, TerminalNode)
-        else n.symbol
-        for n in p
-        if include_choice_node or not isinstance(n, ChoiceNode)])
+from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode, path_to_string
 
 
 def path_to_string_no_choice(p) -> str:
