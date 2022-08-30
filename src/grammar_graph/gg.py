@@ -539,22 +539,26 @@ class GrammarGraph:
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
 
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
-        all_paths = self.graph_paths_from_tree(tree, include_terminals=True)
+        all_paths_including_terminals = self.graph_paths_from_tree(tree, include_terminals=True)
 
-        @functools.lru_cache
         def remove_terminals(path: Tuple[Node, ...]) -> Tuple[Node, ...]:
             if include_terminals or not isinstance(path[-1], TerminalNode):
                 return path
             else:
                 return path[:-2]
 
+        if include_terminals:
+            all_paths = all_paths_including_terminals
+        else:
+            all_paths = [remove_terminals(path) for path in all_paths_including_terminals]
+
         concrete_k_paths: List[Tuple[Node, ...]] = [
             kpath
             for path in all_paths
             for kpath in [
-                remove_terminals(path)[i:i + k]
-                for i in range(0, len(remove_terminals(path)) - k + 1, 1)
-                if remove_terminals(path)[i + k - 1] is not None]
+                path[i:i + k]
+                for i in range(0, len(path) - k + 1, 1)
+                if path[i + k - 1] is not None]
             if (len(kpath) == k and
                 not isinstance(kpath[0], ChoiceNode) and
                 not isinstance(kpath[-1], ChoiceNode))
@@ -562,8 +566,8 @@ class GrammarGraph:
 
         assert all(p[-1] is not None for p in concrete_k_paths)
         assert all(
-            any(remove_terminals(p)[-1] == kpath[-1] for kpath in concrete_k_paths)
-            for p in all_paths if len(remove_terminals(p)) >= k)
+            any(p[-1] == kpath[-1] for kpath in concrete_k_paths)
+            for p in all_paths if len(p) >= k)
 
         if not include_potential_paths:
             return set(concrete_k_paths)
@@ -571,7 +575,7 @@ class GrammarGraph:
         # For open trees: Extend all paths ending with None with the possible k-paths for the last nonterminal.
         potential_k_paths: List[Tuple[Node, ...]] = []
 
-        for prefix in [p[-k:] for p in all_paths if type(p[-1]) is NonterminalNode]:
+        for prefix in [p[-k:] for p in all_paths_including_terminals if type(p[-1]) is NonterminalNode]:
             assert prefix
             assert isinstance(prefix[-1], NonterminalNode)
             nonterminal_kpaths = self.nonterminal_kpaths(
