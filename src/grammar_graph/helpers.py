@@ -1,9 +1,40 @@
-from typing import TypeVar, Callable, List, Tuple
+import re
+from typing import TypeVar, Callable, List, Tuple, Set
 
-from grammar_graph.type_defs import Tree, Path, ParseTree
+from grammar_graph.type_defs import Tree, Path, ParseTree, Grammar
 
 TRAVERSE_PREORDER = 0
 TRAVERSE_POSTORDER = 1
+
+RE_NONTERMINAL = re.compile(r'(<[^<> ]*>)')
+
+
+def nonterminals(expansion: str) -> List[str]:
+    return RE_NONTERMINAL.findall(expansion)
+
+
+def reachable_nonterminals(grammar: Grammar, _start_symbol='<start>') -> Set[str]:
+    reachable = set()
+
+    def _find_reachable_nonterminals(grammar, symbol):
+        nonlocal reachable
+        reachable.add(symbol)
+        for expansion in grammar.get(symbol, []):
+            for nonterminal in nonterminals(expansion):
+                if nonterminal not in reachable:
+                    _find_reachable_nonterminals(grammar, nonterminal)
+
+    _find_reachable_nonterminals(grammar, _start_symbol)
+    return reachable
+
+
+def unreachable_nonterminals(grammar: Grammar, _start_symbol='<start>') -> Set[str]:
+    return grammar.keys() - reachable_nonterminals(grammar, _start_symbol)
+
+
+def delete_unreachable(grammar: Grammar) -> None:
+    for unreachable in unreachable_nonterminals(grammar):
+        del grammar[unreachable]
 
 
 def traverse_tree(

@@ -11,6 +11,7 @@ from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal,
 from fuzzingbook.Parser import CSV_GRAMMAR, EarleyParser
 
 from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode, path_to_string
+from grammar_graph.helpers import delete_unreachable
 
 
 def path_to_string_no_choice(p) -> str:
@@ -73,6 +74,28 @@ class TestGrammarGraph(unittest.TestCase):
         graph = GrammarGraph.from_grammar(US_PHONE_GRAMMAR)
         self.assertTrue(graph.subgraph("<exchange>").is_tree())
         self.assertTrue(graph.subgraph("<start>").is_tree())
+
+    def test_get_subgraph(self):
+        graph = GrammarGraph.from_grammar(JSON_GRAMMAR)
+
+        self.assertTrue(graph.reachable('<member>', '<object>'))
+        self.assertFalse(graph.reachable('<member>', '<json>'))
+        self.assertTrue(graph.reachable('<string>', '<character>'))
+        self.assertEqual(3, len(graph._GrammarGraph__reachable))
+        self.assertEqual(
+            set(JSON_GRAMMAR.keys()),
+            {n.symbol for n in graph.all_nodes if type(n) is NonterminalNode})
+
+        sub_graph = graph.subgraph('<string>')
+        sub_grammar = copy.deepcopy(JSON_GRAMMAR)
+        sub_grammar['<start>'] = ['<string>']
+        delete_unreachable(sub_grammar)
+
+        self.assertEqual(sub_grammar, sub_graph.grammar)
+        self.assertEqual(1, len(sub_graph._GrammarGraph__reachable))
+        self.assertEqual(
+            set(sub_grammar.keys()),
+            {n.symbol for n in sub_graph._GrammarGraph__all_nodes if type(n) is NonterminalNode})
 
     def test_dijkstra(self):
         graph = GrammarGraph.from_grammar(JSON_GRAMMAR)

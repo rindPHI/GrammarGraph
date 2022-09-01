@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, TypeVar, Optional, List, Iterator
+from typing import Tuple, TypeVar, Optional, List, Iterator, Dict
 
 T = TypeVar('T')
 Path = Tuple[int, ...]
 Tree = Tuple[T, Optional[List['Tree[T]']]]
+
+NonterminalType = str
+Grammar = Dict[NonterminalType, List[str]]
 
 
 class ParseTree(ABC):
