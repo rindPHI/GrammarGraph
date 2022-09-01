@@ -7,6 +7,7 @@ Tree = Tuple[T, Optional[List['Tree[T]']]]
 
 NonterminalType = str
 Grammar = Dict[NonterminalType, List[str]]
+ImmutableGrammar = Tuple[Tuple[str, Tuple[str, ...]], ...]
 
 
 class ParseTree(ABC):

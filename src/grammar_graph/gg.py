@@ -4,48 +4,17 @@ import copy
 import json
 import re
 import sys
-from functools import lru_cache, wraps
+from functools import lru_cache
 from typing import List, Dict, Callable, Union, Optional, Tuple, cast, Set
 
 import fibheap as fh
 from graphviz import Digraph
 
-from grammar_graph.helpers import traverse_tree, TRAVERSE_POSTORDER, unreachable_nonterminals
-from grammar_graph.type_defs import ParseTree, Grammar
+from grammar_graph.helpers import traverse_tree, TRAVERSE_POSTORDER, unreachable_nonterminals, parse_tree_arg_hashable, \
+    grammar_to_immutable
+from grammar_graph.type_defs import ParseTree, Grammar, ImmutableGrammar
 
 RE_NONTERMINAL = re.compile(r'(<[^<> ]*>)')
-
-
-def parse_tree_arg_hashable(a_func: callable) -> callable:
-    # This assumes that the first argument of the decorated function is a `ParseTree`
-
-    @wraps(a_func)
-    def decorated(*args, **kwargs):
-        assert isinstance(args[1], ParseTree)
-        args = (args[0], parse_tree_to_hashable(args[1]),) + args[2:]
-        return a_func(*args, **kwargs)
-
-    return decorated
-
-
-def parse_tree_to_hashable(elem: ParseTree) -> ParseTree:
-    stack: List[ParseTree] = []
-
-    def action(_, node: ParseTree):
-        if not node[1]:
-            # noinspection PyTypeChecker
-            stack.append((node[0], None if node[1] is None else ()))
-        else:
-            children = []
-            for _ in range(len(node[1])):
-                children.append(stack.pop())
-            # noinspection PyTypeChecker
-            stack.append((node[0], tuple(children)))
-
-    traverse_tree(elem, action, kind=TRAVERSE_POSTORDER, reverse=True)
-
-    assert len(stack) == 1
-    return stack[0]
 
 
 @lru_cache(maxsize=None)
@@ -136,25 +105,38 @@ class GrammarGraph:
             root: Node,
             grammar: Optional[Grammar] = None,
             all_nodes: Optional[Set[Node]] = None,
-            all_edges: Optional[Set[Tuple[Node, Node]]] = None,
-            reachable: Optional[Dict[Tuple[Node, Node], bool]] = None):
+            all_edges: Optional[Set[Tuple[Node, Node]]] = None):
         assert isinstance(root, Node)
         self.root = root
-        self._grammar = grammar
+        self.__grammar: Optional[Grammar] = grammar
+        self.__immutable_grammar: Optional[ImmutableGrammar] = \
+            grammar_to_immutable(grammar) if grammar is not None else None
         self.__all_nodes: Optional[Set[Node]] = all_nodes
         self.__all_edges: Optional[Set[Tuple[Node, Node]]] = all_edges
-        self.__reachable: Dict[Tuple[Node, Node], bool] = reachable or {}
         self.__hash = None
 
     @property
-    def grammar(self):
-        if self._grammar is None:
-            self._grammar = self._compute_grammar()
+    def grammar(self) -> Grammar:
+        if self.__grammar is None:
+            self.__grammar = self._compute_grammar()
+            self.__immutable_grammar = grammar_to_immutable(self.__grammar)
 
-        return self._grammar
+        return self.__grammar
 
     @grammar.setter
     def grammar(self, grammar: Grammar):
+        raise NotImplementedError()
+
+    @property
+    def immutable_grammar(self) -> ImmutableGrammar:
+        if self.__immutable_grammar is None:
+            self.__grammar = self._compute_grammar()
+            self.__immutable_grammar = grammar_to_immutable(self.__grammar)
+
+        return self.__immutable_grammar
+
+    @immutable_grammar.setter
+    def immutable_grammar(self, grammar: ImmutableGrammar):
         raise NotImplementedError()
 
     def __repr__(self):
@@ -165,7 +147,7 @@ class GrammarGraph:
 
     def __hash__(self):
         if self.__hash is None:
-            self.__hash = hash(json.dumps(self.to_grammar()))
+            self.__hash = hash(self.immutable_grammar)
         return self.__hash
 
     def bfs(self, action: Callable[[Node], Union[None, bool]], start_node: Union[None, Node] = None):
@@ -224,23 +206,12 @@ class GrammarGraph:
         self.__all_edges = val
 
     def reachable(self, from_node: Union[str, Node], to_node: Union[str, Node]) -> bool:
-        # Note: Reachability is not reflexive!
-        def node_in_children(node: Node) -> bool:
-            return isinstance(node, NonterminalNode) and to_node in node.children
-
         if isinstance(from_node, str):
             from_node = self.get_node(from_node)
         if isinstance(to_node, str):
             to_node = self.get_node(to_node)
 
-        assert from_node in self.all_nodes
-        assert to_node in self.all_nodes
-
-        if (from_node, to_node) not in self.__reachable:
-            sources = self.filter(node_in_children, node_in_children, from_node=from_node)
-            self.__reachable[(from_node, to_node)] = len(sources) > 0
-
-        return self.__reachable[(from_node, to_node)]
+        return reachable(self, from_node, to_node)
 
     def shortest_non_trivial_path(self, source: Node, target: Node,
                                   nodes_filter: Optional[Callable[[Node], bool]] =
@@ -346,7 +317,7 @@ class GrammarGraph:
         """Deprecated; use the `grammar` property."""
         return self.grammar
 
-    def _compute_grammar(self):
+    def _compute_grammar(self) -> Grammar:
         result: Grammar = {}
 
         def action(node: Node):
@@ -376,7 +347,6 @@ class GrammarGraph:
 
         all_nodes: Optional[Set[Node]] = copy.copy(self.__all_nodes)
         all_edges: Optional[Set[Tuple[Node, Node]]] = copy.copy(self.__all_edges)
-        reachable: Dict[Tuple[Node, Node], bool] = copy.copy(self.__reachable)
 
         new_grammar = copy.deepcopy(self.grammar)
         new_grammar['<start>'] = [nonterminal.symbol]
@@ -389,12 +359,6 @@ class GrammarGraph:
             all_edges = set(filter(
                 lambda t: t[0].symbol not in unreachable_symbols and t[1].symbol not in unreachable_symbols,
                 all_edges))
-        # noinspection PyTypeChecker
-        reachable = dict(filter(
-            lambda item: (
-                    item[0][0].symbol not in unreachable_symbols and
-                    item[0][1].symbol not in unreachable_symbols),
-            reachable.items()))
 
         for unreachable_symbol in unreachable_symbols:
             del new_grammar[unreachable_symbol]
@@ -403,8 +367,7 @@ class GrammarGraph:
             root_node,
             grammar=new_grammar,
             all_nodes=all_nodes,
-            all_edges=all_edges,
-            reachable=reachable)
+            all_edges=all_edges)
 
     def parents(self, node: Node) -> List[Node]:
         result = []
@@ -678,7 +641,7 @@ class GrammarGraph:
             include_terminals=True) -> set[Tuple[Node, ...]]:
         assert k > 0
         k += k - 1  # Each path of k terminal/nonterminal nodes includes k-1 choice nodes
-        result: set[Tuple[Node, ...]] = set([])
+        result: List[Tuple[Node, ...]] = []
 
         if not start_node:
             all_nodes = self.all_nodes
@@ -701,7 +664,7 @@ class GrammarGraph:
 
                 node_result = new_node_result
 
-            result.update(node_result)
+            result.extend(node_result)
 
         return {
             kpath for kpath in result
@@ -791,3 +754,16 @@ def path_to_string(p, include_choice_node=True) -> str:
         else n.symbol
         for n in p
         if include_choice_node or not isinstance(n, ChoiceNode)])
+
+
+@lru_cache(maxsize=None)
+def reachable(graph: GrammarGraph, from_node: Node, to_node: Node) -> bool:
+    # Note: Reachability is not reflexive!
+    def node_in_children(node: Node) -> bool:
+        return isinstance(node, NonterminalNode) and to_node in node.children
+
+    assert from_node in graph.all_nodes
+    assert to_node in graph.all_nodes
+
+    sources = graph.filter(node_in_children, node_in_children, from_node=from_node)
+    return len(sources) > 0

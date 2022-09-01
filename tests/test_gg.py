@@ -10,7 +10,7 @@ from fuzzingbook.GrammarCoverageFuzzer import GrammarCoverageFuzzer
 from fuzzingbook.Grammars import JSON_GRAMMAR, US_PHONE_GRAMMAR, is_nonterminal, srange
 from fuzzingbook.Parser import CSV_GRAMMAR, EarleyParser
 
-from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode, path_to_string
+from grammar_graph.gg import GrammarGraph, Node, NonterminalNode, ChoiceNode, TerminalNode, path_to_string, reachable
 from grammar_graph.helpers import delete_unreachable
 
 
@@ -81,7 +81,6 @@ class TestGrammarGraph(unittest.TestCase):
         self.assertTrue(graph.reachable('<member>', '<object>'))
         self.assertFalse(graph.reachable('<member>', '<json>'))
         self.assertTrue(graph.reachable('<string>', '<character>'))
-        self.assertEqual(3, len(graph._GrammarGraph__reachable))
         self.assertEqual(
             set(JSON_GRAMMAR.keys()),
             {n.symbol for n in graph.all_nodes if type(n) is NonterminalNode})
@@ -92,7 +91,6 @@ class TestGrammarGraph(unittest.TestCase):
         delete_unreachable(sub_grammar)
 
         self.assertEqual(sub_grammar, sub_graph.grammar)
-        self.assertEqual(1, len(sub_graph._GrammarGraph__reachable))
         self.assertEqual(
             set(sub_grammar.keys()),
             {n.symbol for n in sub_graph._GrammarGraph__all_nodes if type(n) is NonterminalNode})
