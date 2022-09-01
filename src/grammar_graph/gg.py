@@ -3,7 +3,7 @@ import html
 import json
 import re
 import sys
-from functools import lru_cache
+from functools import lru_cache, wraps
 from typing import List, Dict, Callable, Union, Optional, Tuple, cast, Set
 
 import fibheap as fh
@@ -16,6 +16,38 @@ NonterminalType = str
 Grammar = Dict[NonterminalType, List[str]]
 
 RE_NONTERMINAL = re.compile(r'(<[^<> ]*>)')
+
+
+def parse_tree_arg_hashable(a_func: callable) -> callable:
+    # This assumes that the first argument of the decorated function is a `ParseTree`
+
+    @wraps(a_func)
+    def decorated(*args, **kwargs):
+        assert isinstance(args[1], ParseTree)
+        args = (args[0], parse_tree_to_hashable(args[1]),) + args[2:]
+        return a_func(*args, **kwargs)
+
+    return decorated
+
+
+def parse_tree_to_hashable(elem: ParseTree) -> ParseTree:
+    stack: List[ParseTree] = []
+
+    def action(_, node: ParseTree):
+        if not node[1]:
+            # noinspection PyTypeChecker
+            stack.append((node[0], None if node[1] is None else ()))
+        else:
+            children = []
+            for _ in range(len(node[1])):
+                children.append(stack.pop())
+            # noinspection PyTypeChecker
+            stack.append((node[0], tuple(children)))
+
+    traverse_tree(elem, action, kind=TRAVERSE_POSTORDER, reverse=True)
+
+    assert len(stack) == 1
+    return stack[0]
 
 
 @lru_cache(maxsize=None)
@@ -424,6 +456,8 @@ class GrammarGraph:
         except RuntimeError:
             return False
 
+    @parse_tree_arg_hashable
+    @functools.lru_cache
     def graph_paths_from_tree(self, tree: ParseTree, include_terminals=True) -> Set[Tuple[Optional[Node], ...]]:
         # We first compute a list, and then an ordered set with unique elements. This is
         # *much* more performant!
@@ -518,6 +552,8 @@ class GrammarGraph:
 
         return matching_choice_nodes[0]
 
+    @parse_tree_arg_hashable
+    @functools.lru_cache
     def k_paths_in_tree(
             self,
             tree: ParseTree,
