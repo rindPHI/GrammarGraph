@@ -728,7 +728,7 @@ class GrammarGraph:
             new_node = NonterminalNode(label, children_nodes)
             nonterminal_nodes[label] = new_node
 
-            assert grammar[label], f"Grammar has no rules for {label}"
+            assert label in grammar, f"Grammar has no rules for {label}"
             for nr, expansion in enumerate(grammar[label]):
                 expansion_children_nodes = []
                 if len(expansion) == 0:
