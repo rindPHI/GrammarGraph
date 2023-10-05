@@ -348,8 +348,7 @@ class GrammarGraph:
         all_nodes: Optional[Set[Node]] = copy.copy(self.__all_nodes)
         all_edges: Optional[Set[Tuple[Node, Node]]] = copy.copy(self.__all_edges)
 
-        new_grammar = copy.deepcopy(self.grammar)
-        new_grammar['<start>'] = [nonterminal.symbol]
+        new_grammar = copy.deepcopy(self.grammar) | {"<start>": [nonterminal.symbol]}
 
         unreachable_symbols: Set[str] = unreachable_nonterminals(new_grammar)
 
